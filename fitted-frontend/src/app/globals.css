@@ -19,7 +19,8 @@ h1 {
 }
 
 .bg-fitted-blue {
-  background-color: rgba(86, 126, 156, 0.83);
+  background: linear-gradient(135deg, #223a53 0%, #567e9c 50%, #7fa3c4 100%);
+  min-height: 100vh;
 }
 
 /* Page layouts */
@@ -43,33 +44,75 @@ h1 {
 /* Component styles */
 .fitted-title {
   font-family: 'Playfair Display', serif;
-  font-size: clamp(3rem, 8vw, 6rem);
+  font-size: clamp(4rem, 10vw, 8rem);
   font-weight: 900;
   font-style: italic;
-  color: #111;
+  color: white;
+  text-align: center;
+  margin-bottom: 1rem;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  letter-spacing: -0.02em;
+}
+
+.fitted-tagline {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.8);
   text-align: center;
   margin-bottom: 4rem;
+  letter-spacing: 0.05em;
 }
 
 .fitted-oval-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2rem;
+  gap: 1.5rem;
   width: 320px;
-  height: 110px;
-  margin-bottom: 2rem;
-  background: #d7d7d7;
+  height: 100px;
+  margin-bottom: 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 2px solid rgba(0, 0, 0, 0.8);
   border-radius: 9999px;
-  font-size: 1.3rem;
-  font-weight: 600;
-  color: #111;
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: white;
   text-decoration: none;
-  transition: background-color 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.fitted-oval-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.05);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .fitted-oval-btn:hover {
-  background: #cfcfcf;
+  transform: scale(1.05) translateY(-2px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  border-color: rgba(0, 0, 0, 0.9);
+}
+
+.fitted-oval-btn:hover::before {
+  opacity: 1;
+}
+
+.fitted-oval-btn:active {
+  transform: scale(1.02);
+}
+
+/* Add floating animation to buttons */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
 }
 
 .nav-brand {
@@ -828,6 +871,11 @@ h1 {
   50% {
     opacity: 0.5;
   }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
 }
 
 .animate-pulse {
