@@ -1,12 +1,15 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ClothingItem } from '@/types/clothing';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import ClosetItemCard from './ClosetItemCard';
+import ClothingItemModal from './ClothingItemModal';
 
 const ClosetView = () => {
   const [clothingItems, setClothingItems] = useLocalStorage<ClothingItem[]>('clothing-items', []);
+  const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const groupedItems = useMemo(() => {
     return clothingItems.reduce((acc, item) => {
@@ -20,6 +23,17 @@ const ClosetView = () => {
 
   const handleDeleteItem = (itemId: string) => {
     setClothingItems(prevItems => prevItems.filter(item => item.id !== itemId));
+  };
+
+  const handleItemClick = (item: ClothingItem) => {
+    setSelectedItem(item);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    // Delay clearing selected item to prevent flicker during close animation
+    setTimeout(() => setSelectedItem(null), 300);
   };
 
   const categoryLabels: Record<string, string> = {
@@ -55,6 +69,7 @@ const ClosetView = () => {
                     key={item.id}
                     item={item}
                     onDelete={handleDeleteItem}
+                    onClick={handleItemClick}
                   />
                 ))}
               </div>
@@ -62,6 +77,13 @@ const ClosetView = () => {
           ))}
         </div>
       )}
+      
+      <ClothingItemModal
+        item={selectedItem}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onDelete={handleDeleteItem}
+      />
     </div>
   );
 };

@@ -6,15 +6,21 @@ import { ClothingItem } from '@/types/clothing';
 interface ClosetItemCardProps {
   item: ClothingItem;
   onDelete: (itemId: string) => void;
+  onClick: (item: ClothingItem) => void;
 }
 
-const ClosetItemCard = ({ item, onDelete }: ClosetItemCardProps) => {
-  const handleDeleteClick = () => {
+const ClosetItemCard = ({ item, onDelete, onClick }: ClosetItemCardProps) => {
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     onDelete(item.id);
   };
 
+  const handleCardClick = () => {
+    onClick(item);
+  };
+
   return (
-    <div className="closet-item-card">
+    <div className="closet-item-card" onClick={handleCardClick}>
       <div className="closet-item-image-container">
         <img
           src={item.image}
