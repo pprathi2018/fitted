@@ -30,12 +30,10 @@ const OutfitCanvas = () => {
   }
 
   const handleItemSelect = useCallback((itemId: string) => {
-    // Toggle selection: if clicking the same item, deselect it
     setSelectedItemId(prevSelected => prevSelected === itemId ? null : itemId);
   }, []);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
-    // Deselect if clicking on the canvas background or any non-item element
     const target = e.target as HTMLElement;
     const isCanvasBackground = target.classList.contains('canvas-dropzone') || 
                               target.classList.contains('canvas-placeholder') ||
@@ -44,6 +42,24 @@ const OutfitCanvas = () => {
     if (isCanvasBackground) {
       setSelectedItemId(null);
     }
+  }, []);
+
+  const handleItemDragStop = useCallback((itemId: string, x: number, y: number) => {
+    setOutfitItems(prev => prev.map(item => 
+      item.id === itemId 
+        ? { ...item, x, y, zIndex: nextZIndex }
+        : item
+    ));
+    setNextZIndex(prev => prev + 1);
+    setSelectedItemId(itemId);
+  }, [nextZIndex]);
+
+  const handleItemResizeStop = useCallback((itemId: string, width: number, height: number) => {
+    setOutfitItems(prev => prev.map(item => 
+      item.id === itemId 
+        ? { ...item, width, height }
+        : item
+    ));
   }, []);
 
   const deleteSelectedItem = useCallback(() => {
@@ -82,40 +98,25 @@ const OutfitCanvas = () => {
         const offset = monitor.getClientOffset();
         const canvasRect = document.getElementById('canvas')?.getBoundingClientRect();
         
-        if (offset && canvasRect) {
-          const x = offset.x - canvasRect.left - (draggedItem.dragOffsetX || 64);
-          const y = offset.y - canvasRect.top - (draggedItem.dragOffsetY || 80);
-          const constrainedX = Math.max(0, Math.min(x, canvasRect.width - 128));
-          const constrainedY = Math.max(0, Math.min(y, canvasRect.height - 160));
-          
-          if (draggedItem.fromCanvas) {
-            // Moving existing canvas item - auto-select the dragged item
-            const draggedOutfitItem = outfitItems.find(item => item.clothingId === draggedItem.id);
-            if (draggedOutfitItem) {
-              setSelectedItemId(draggedOutfitItem.id);
-            }
+        if (offset && canvasRect && !draggedItem.fromCanvas) {
+          if (!outfitContainsClothingItem(draggedItem.id)) {
+            const x = offset.x - canvasRect.left - 64;
+            const y = offset.y - canvasRect.top - 80;
+            const constrainedX = Math.max(0, Math.min(x, canvasRect.width - 128));
+            const constrainedY = Math.max(0, Math.min(y, canvasRect.height - 160));
             
-            setOutfitItems(prev => prev.map(outfitItem => 
-              outfitItem.clothingId === draggedItem.id
-                ? { ...outfitItem, x: constrainedX, y: constrainedY, zIndex: nextZIndex }
-                : outfitItem
-            ));
+            const newOutfitItem: OutfitItem = {
+              id: `${draggedItem.id}-${Date.now()}`,
+              clothingId: draggedItem.id,
+              x: constrainedX,
+              y: constrainedY,
+              zIndex: nextZIndex,
+              width: 128,
+              height: 160
+            };
+            setOutfitItems(prev => [...prev, newOutfitItem]);
             setNextZIndex(prev => prev + 1);
-          } else {
-            if (!outfitContainsClothingItem(draggedItem.id)) {
-              // Adding new item from sidebar (only if not already on canvas)
-              const newOutfitItem: OutfitItem = {
-                id: `${draggedItem.id}-${Date.now()}`,
-                clothingId: draggedItem.id,
-                x: constrainedX,
-                y: constrainedY,
-                zIndex: nextZIndex,
-              };
-              setOutfitItems(prev => [...prev, newOutfitItem]);
-              setNextZIndex(prev => prev + 1);
-              // Auto-select the newly added item
-              setSelectedItemId(newOutfitItem.id);
-            }
+            setSelectedItemId(newOutfitItem.id);
           }
         }
       },
@@ -144,22 +145,18 @@ const OutfitCanvas = () => {
           if (!clothingItem) return null;
           
           return (
-            <div
+            <CanvasImage
               key={outfitItem.id}
-              style={{
-                position: 'absolute',
-                left: outfitItem.x,
-                top: outfitItem.y,
-                zIndex: outfitItem.zIndex,
-              }}
-            >
-              <CanvasImage 
-                item={clothingItem} 
-                outfitItemId={outfitItem.id}
-                isSelected={selectedItemId === outfitItem.id}
-                onSelect={handleItemSelect}
-              />
-            </div>
+              item={clothingItem}
+              outfitItemId={outfitItem.id}
+              isSelected={selectedItemId === outfitItem.id}
+              position={{ x: outfitItem.x, y: outfitItem.y }}
+              size={{ width: outfitItem.width || 128, height: outfitItem.height || 160 }}
+              zIndex={outfitItem.zIndex}
+              onSelect={handleItemSelect}
+              onDragStop={handleItemDragStop}
+              onResizeStop={handleItemResizeStop}
+            />
           );
         })}
       </div>

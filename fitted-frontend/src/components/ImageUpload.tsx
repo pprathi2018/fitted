@@ -148,7 +148,6 @@ const ImageUpload = () => {
               onChange={(e) => setItemName(e.target.value)}
               placeholder="e.g., Blue Denim Jacket"
               className="item-name-input"
-              style={{ width: '99%' }}
             />
           </div>
           

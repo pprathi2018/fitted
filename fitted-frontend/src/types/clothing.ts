@@ -12,6 +12,8 @@ export interface OutfitItem {
   x: number;
   y: number;
   zIndex: number;
+  width?: number;  // Optional, defaults to 128px
+  height?: number; // Optional, defaults to 160px
 }
 
 export interface Outfit {
