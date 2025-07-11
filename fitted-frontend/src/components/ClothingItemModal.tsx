@@ -12,17 +12,6 @@ interface ClothingItemModalProps {
 }
 
 const ClothingItemModal = ({ item, isOpen, onClose, onDelete }: ClothingItemModalProps) => {
-  // Handle escape key press
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
