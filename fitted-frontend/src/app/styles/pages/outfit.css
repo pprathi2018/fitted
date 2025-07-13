@@ -1,0 +1,11 @@
+/* Outfit page styles */
+.outfit-page {
+  height: 100vh;
+  background-color: #f9fafb;
+}
+
+.upload-page {
+  min-height: 100vh;
+  background-color: #f9fafb;
+  padding: 2rem 0;
+}

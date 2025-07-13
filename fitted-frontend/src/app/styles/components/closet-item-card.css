@@ -1,0 +1,80 @@
+/* ClosetItemCard component styles */
+.closet-item-card {
+  position: relative;
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.closet-item-card:hover {
+  border-color: #93c5fd;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.closet-item-image-container {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafb;
+}
+
+.closet-item-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.closet-item-delete-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.closet-item-card:hover .closet-item-delete-btn {
+  opacity: 1;
+}
+
+.closet-item-delete-btn:hover {
+  background: rgba(220, 38, 38, 0.9);
+}
+
+.delete-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.closet-item-info {
+  padding: 1rem;
+}
+
+.closet-item-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.closet-item-category {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-transform: capitalize;
+}
