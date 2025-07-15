@@ -22,13 +22,12 @@ class BackgroundRemover:
         model_name = 'u2net_cloth_seg' if use_cloth_seg else 'isnet-general-use'
         self.use_cloth_seg = use_cloth_seg
         self.session = None
-        self.active_model = None
+        self.active_model = model_name
         self._initialize_session(model_name)
     
     def _initialize_session(self, model_name: str) -> None:
         try:
             self.session = new_session(model_name)
-            self.active_model = model_name
             logger.info(f"Successfully initialized with {model_name}")
         except Exception as e:
             raise BackgroundRemovalError(f"Failed to initialize {model_name}: {e}")
@@ -46,44 +45,25 @@ class BackgroundRemover:
     
     def _prepare_image_for_processing(self, image: Image.Image) -> Image.Image:
         """
-        Prepare image for optimal background removal results.
-        
         Steps:
-        1. Convert transparency to white background (ML models work better with solid backgrounds)
-        2. Ensure RGB format (required by the model)
-        3. Resize if too large (improves performance without quality loss)
-        4. Slight contrast enhancement (helps with edge detection)
+        1. Convert transparency to white background
+        2. Ensure RGB format
+        4. Slight contrast enhancement
         """
         original_size = image.size
         
-        # Handle transparency by converting to white background
-        # This prevents the ML model from getting confused by transparent pixels
         if image.mode in ('RGBA', 'LA'):
-            # Create white background
             white_background = Image.new('RGB', image.size, (255, 255, 255))
             if image.mode == 'RGBA':
-                # Paste image onto white background using alpha channel as mask
                 white_background.paste(image, mask=image.split()[-1])
             else:  # LA mode
                 white_background.paste(image, mask=image.split()[-1])
             image = white_background
             logger.info("Converted transparent image to white background")
         elif image.mode != 'RGB':
-            # Convert other modes (like CMYK, Grayscale) to RGB
             image = image.convert('RGB')
             logger.info(f"Converted image from {image.mode} to RGB")
-        
-        # Resize large images for performance (2048px is optimal balance of quality/speed)
-        max_dimension = 2048
-        if max(image.size) > max_dimension:
-            # Calculate new size maintaining aspect ratio
-            ratio = max_dimension / max(image.size)
-            new_size = (int(image.size[0] * ratio), int(image.size[1] * ratio))
-            image = image.resize(new_size, Image.Resampling.LANCZOS)
-            logger.info(f"Resized image from {original_size} to {new_size} for optimal processing")
-        
-        # Slight contrast enhancement helps the model distinguish edges better
-        # 1.1 is a subtle enhancement that improves results without over-processing
+      
         enhancer = ImageEnhance.Contrast(image)
         image = enhancer.enhance(1.1)
         
@@ -111,7 +91,7 @@ class BackgroundRemover:
         centered_image.paste(cropped, (paste_x, paste_y), cropped)
         return centered_image
     
-    def _remove_background_with_alpha_matting(self, image: Image.Image, original_size: Tuple[int, int]) -> Image.Image:
+    def _remove_background_with_alpha_matting_and_fallback(self, image: Image.Image, original_size: Tuple[int, int]) -> Image.Image:
         try:
             output_image = remove(
                 image,
@@ -125,7 +105,6 @@ class BackgroundRemover:
             if self.use_cloth_seg:
                 result = self._fix_cloth_seg_positioning(result, original_size)
             return result
-            
         except Exception as e:
             logger.warning(f"Alpha matting failed with {self.active_model}: {e}. Using basic removal...")
             try:
@@ -155,7 +134,6 @@ class BackgroundRemover:
             
             try:
                 input_image = Image.open(input_path)
-                logger.info(f"Loaded image: {input_image.size}, mode: {input_image.mode}")
             except Exception as e:
                 raise BackgroundRemovalError(f"Failed to load image: {e}")
             
@@ -163,7 +141,7 @@ class BackgroundRemover:
             prepared_image = self._prepare_image_for_processing(input_image)
             
             logger.info(f"Removing background using {self.active_model}...")
-            result_image = self._remove_background_with_alpha_matting(prepared_image, original_size)
+            result_image = self._remove_background_with_alpha_matting_and_fallback(prepared_image, original_size)
             
             logger.info(f"Saving result to: {output_path}")
             result_image.save(output_path, format="PNG", optimize=True)
@@ -172,23 +150,14 @@ class BackgroundRemover:
             
         except Exception as e:
             logger.error(f"Background removal failed: {str(e)}")
+            raise BackgroundRemovalError(f"Background removal failed: {str(e)}")
     
     def remove_background_from_bytes(self, image_bytes: bytes) -> Optional[bytes]:
-        """
-        Remove background from image bytes. Used for web API integration.
-        
-        Args:
-            image_bytes: Input image data as bytes
-            
-        Returns:
-            PNG image bytes with background removed, or None if processing failed
-        """
         try:
             logger.info("Processing image from bytes")
             
             try:
                 input_image = Image.open(io.BytesIO(image_bytes))
-                logger.info(f"Loaded image from bytes: {input_image.size}, mode: {input_image.mode}")
             except Exception as e:
                 logger.error(f"Failed to load image from bytes: {e}")
                 return None
@@ -197,7 +166,7 @@ class BackgroundRemover:
             prepared_image = self._prepare_image_for_processing(input_image)
             
             logger.info(f"Removing background using {self.active_model}...")
-            result_image = self._remove_background_with_alpha_matting(prepared_image, original_size)
+            result_image = self._remove_background_with_alpha_matting_and_fallback(prepared_image, original_size)
             
             output_buffer = io.BytesIO()
             result_image.save(output_buffer, format="PNG", optimize=True)
@@ -208,38 +177,24 @@ class BackgroundRemover:
             
         except Exception as e:
             logger.error(f"Failed to process image from bytes: {e}")
-            return None
+            raise BackgroundRemovalError(f"Failed to process image from bytes: {e}")
 
 
-if __name__ == "__main__":
-    import sys
+# if __name__ == "__main__":
+#     import sys
     
-    input_path = "./inputs/AberShort.png"
-    output_path = "./outputs/test_clothing_no_bg.png"
-    use_cloth_seg = "--cloth-seg" in sys.argv
+#     use_cloth_seg = "--cloth-seg" in sys.argv
 
-    logger.info("🧪 Starting background removal test...")
-    try:
-        remover = BackgroundRemover(use_cloth_seg)
+#     logger.info("Starting background removal")
+#     try:
+#         remover = BackgroundRemover(use_cloth_seg)
+
+#         with open(input_path, 'rb') as f:
+#             image_bytes = f.read()
         
-        remover.remove_background_from_file(input_path, output_path)
-        
-        logger.info("Testing bytes-based processing...")
-        with open(input_path, 'rb') as f:
-            image_bytes = f.read()
-        
-        result_bytes = remover.remove_background_from_bytes(image_bytes)
-        
-        if result_bytes:
-            bytes_output_path = "./outputs/test_bytes_output.png"
-            with open(bytes_output_path, 'wb') as f:
-                f.write(result_bytes)
-            logger.info(f"Bytes processing succeeded")
-            logger.info(f"Bytes output saved to: {os.path.abspath(bytes_output_path)}")
-        else:
-            logger.error("Bytes processing failed")
+#         result_bytes = remover.remove_background_from_bytes(image_bytes)
             
-    except Exception as e:
-        logger.error(f"Test failed with error: {e}")
+#     except Exception as e:
+#         raise BackgroundRemovalError(f"Background removal failed: {str(e)}")
     
-    logger.info("\nTesting completed!")
+#     logger.info("\nTesting completed!")
