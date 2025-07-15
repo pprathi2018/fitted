@@ -19,7 +19,7 @@ class BackgroundRemover:
     SUPPORTED_FORMATS = {'.jpg', '.jpeg', '.png'}
     
     def __init__(self, use_cloth_seg: bool = False):
-        model_name = 'u2net_cloth_seg' if use_cloth_seg else 'isnet-general-use'
+        model_name = 'u2net_cloth_seg' if use_cloth_seg else 'u2net'
         self.use_cloth_seg = use_cloth_seg
         self.session = None
         self.active_model = model_name
@@ -180,21 +180,36 @@ class BackgroundRemover:
             raise BackgroundRemovalError(f"Failed to process image from bytes: {e}")
 
 
-# if __name__ == "__main__":
-#     import sys
+# local testing
+if __name__ == "__main__":
+    import sys
     
-#     use_cloth_seg = "--cloth-seg" in sys.argv
+    input_path = "./inputs/KithShirt.jpg"
+    output_path = "./outputs/test_clothing_no_bg.png"
+    use_cloth_seg = "--cloth-seg" in sys.argv
 
-#     logger.info("Starting background removal")
-#     try:
-#         remover = BackgroundRemover(use_cloth_seg)
-
-#         with open(input_path, 'rb') as f:
-#             image_bytes = f.read()
+    logger.info("Starting background removal test...")
+    try:
+        remover = BackgroundRemover(use_cloth_seg)
         
-#         result_bytes = remover.remove_background_from_bytes(image_bytes)
+        remover.remove_background_from_file(input_path, output_path)
+        
+        logger.info("Testing bytes-based processing...")
+        with open(input_path, 'rb') as f:
+            image_bytes = f.read()
+        
+        result_bytes = remover.remove_background_from_bytes(image_bytes)
+        
+        if result_bytes:
+            bytes_output_path = "./outputs/test_bytes_output.png"
+            with open(bytes_output_path, 'wb') as f:
+                f.write(result_bytes)
+            logger.info(f"Bytes processing succeeded")
+            logger.info(f"Bytes output saved to: {os.path.abspath(bytes_output_path)}")
+        else:
+            logger.error("Bytes processing failed")
             
-#     except Exception as e:
-#         raise BackgroundRemovalError(f"Background removal failed: {str(e)}")
+    except Exception as e:
+        logger.error(f"Test failed with error: {e}")
     
-#     logger.info("\nTesting completed!")
+    logger.info("\nTesting completed!")
