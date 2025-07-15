@@ -40,6 +40,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 @app.get("/")
@@ -48,18 +49,21 @@ async def root():
         "message": "Fitted Background Removal API",
         "status": "active",
         "endpoints": {
-            "health": "/health",
             "remove_background": "/api/remove-background",
-            "docs": "/docs"
         }
     }
 
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "service": "background-removal",
-    }
+@app.get("/warmup")
+async def warmup():
+    try:
+        await get_or_use_bg_remover_model(False)
+        return {"status": "warm", "models_loaded": list(model_cache.keys())}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.options("/api/remove-background")
+async def options_handler():
+    return {"message": "OK"}
 
 @app.post("/api/remove-background")
 async def remove_background(file: UploadFile = File(...), use_cloth_seg: bool = False):

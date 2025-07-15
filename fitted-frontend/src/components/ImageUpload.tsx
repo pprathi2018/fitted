@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Upload, X, Check } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { ClothingItem } from '@/types/clothing';
@@ -15,6 +15,19 @@ const CLOTHING_CATEGORIES = [
   { value: 'accessory', label: 'Accessory' },
 ] as const;
 
+// API Warmup
+useEffect(() => {
+  const warmupAPI = async () => {
+    try {
+      const response = await fetch('https://fitted-background-removal.onrender.com/warmup')
+    } catch (error) {
+      console.warn(`Error while warming up API: ${error}`)
+    }
+  }
+
+  warmupAPI();
+}, []);
+
 const ImageUpload = () => {
   const [dragActive, setDragActive] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
@@ -28,9 +41,10 @@ const ImageUpload = () => {
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://localhost:8000/api/remove-background', {
+      const response = await fetch('https://fitted-background-removal.onrender.com/api/remove-background', {
         method: 'POST',
-        body: formData
+        body: formData,
+        credentials: 'omit',
       });
 
       if (!response.ok) {
