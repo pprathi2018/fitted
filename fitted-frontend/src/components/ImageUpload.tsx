@@ -23,20 +23,56 @@ const ImageUpload = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [clothingItems, setClothingItems] = useLocalStorage<ClothingItem[]>('clothing-items', []);
 
+  const removeBackground = async (file: File) : Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('http://localhost:8000/api/remove-background', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`Background removal API failed. Error status: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+
+      const url = URL.createObjectURL(blob);
+      return url;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   const processImage = useCallback((file: File) => {
     setIsProcessing(true);
     
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
+    // const reader = new FileReader();
+    // reader.onload = (e) => {
+    //   const result = e.target?.result as string;
       
-      // Simulate background removal processing
-      setTimeout(() => {
-        setUploadedImage(result);
-        setIsProcessing(false);
-      }, 1500);
-    };
-    reader.readAsDataURL(file);
+    //   // Simulate background removal processing
+    //   setTimeout(() => {
+    //     setUploadedImage(result);
+    //     setIsProcessing(false);
+    //   }, 1500);
+    // };
+    // reader.readAsDataURL(file);
+
+    removeBackground(file)
+    .then((url) => {
+      setUploadedImage(url);
+    })
+    .catch((error) => {
+      setUploadedImage(null);
+      console.error(error);
+      alert(error);
+    })
+    .finally(() => {
+      setIsProcessing(false);
+    })
   }, []);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -84,6 +120,7 @@ const ImageUpload = () => {
     };
 
     setClothingItems([...clothingItems, newItem]);
+
     resetForm();
   };
 

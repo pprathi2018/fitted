@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 import os
 import logging
 from fastapi import FastAPI, File, UploadFile, HTTPException
@@ -8,6 +9,19 @@ from background_removal import BackgroundRemover, BackgroundRemovalError
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+model_cache = {}
+
+async def get_or_use_bg_remover_model(use_cloth_seg: bool) -> BackgroundRemover:
+  cache_key = 'cloth_seg' if use_cloth_seg else 'general'
+  if cache_key not in model_cache:
+    logger.info("Instantiating background remover")
+    remover = BackgroundRemover(use_cloth_seg)
+    model_cache[cache_key] = remover
+    return remover
+  else:
+    logger.info("Using cached background remover")
+    return model_cache[cache_key]
 
 app = FastAPI(
     title="Fitted Background Removal API",
@@ -50,10 +64,10 @@ async def health_check():
 @app.post("/api/remove-background")
 async def remove_background(file: UploadFile = File(...), use_cloth_seg: bool = False):
     try:
-        remover = BackgroundRemover(use_cloth_seg)
-        logger.info("✓ Background remover initialized successfully")
+        remover = await get_or_use_bg_remover_model(use_cloth_seg)
+        logger.info("Background remover initialized successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to initialize background remover: {e}")
+        logger.error(f"Failed to initialize background remover: {e}")
         raise HTTPException(
             status_code=503, 
             detail="Background removal service is not available. Please try again later."
