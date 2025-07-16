@@ -29,20 +29,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# TODO: Update these URLs
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://fitted.vercel.app",  # TODO: Update this
-        "*"  # TODO: Remove this in production
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"]
-)
-
 @app.get("/")
 async def root():
     return {
@@ -50,7 +36,15 @@ async def root():
         "status": "active",
         "endpoints": {
             "remove_background": "/api/remove-background",
+            "health": "/health"
         }
+    }
+
+@app.get("/health")
+async def health():
+    return {
+        "message": "Health check sucessful",
+        "status": "active",
     }
 
 @app.get("/warmup")

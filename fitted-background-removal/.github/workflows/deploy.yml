@@ -1,0 +1,60 @@
+name: Deploy to AWS Lambda
+
+on:
+  push:
+    branches: [ main ]
+    paths: 
+      - 'fitted-background-removal/**'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REGISTRY: 882875132161.dkr.ecr.us-east-1.amazonaws.com
+  REPOSITORY_NAME = fitted-background-removal
+  LAMBDA_FUNCTION_NAME: fitted-background-removal
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+    
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build Docker Image
+      run: docker build -t fitted-bg-removal .
+
+    - name: Tag Docker Image
+      env:
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker tag fitted-bg-removal:latest $ECR_REGISTRY/$REPOSITORY_NAME:$IMAGE_TAG
+        docker tag fitted-bg-removal:latest $ECR_REGISTRY/$REPOSITORY_NAME:latest
+
+    - name: Push Docker Image To ECR
+      env:
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker push $ECR_REGISTRY/$REPOSITORY_NAME:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$REPOSITORY_NAME:latest
+
+     - name: Update Lambda function code
+      run: |
+        aws lambda update-function-code \
+          --function-name $LAMBDA_FUNCTION_NAME \
+          --image-uri $ECR_REGISTRY/$REPOSITORY_NAME:latest
+        
+        # Wait for update to complete
+        aws lambda wait function-updated \
+          --function-name $LAMBDA_FUNCTION_NAME

@@ -15,19 +15,6 @@ const CLOTHING_CATEGORIES = [
   { value: 'accessory', label: 'Accessory' },
 ] as const;
 
-// API Warmup
-useEffect(() => {
-  const warmupAPI = async () => {
-    try {
-      const response = await fetch('https://fitted-background-removal.onrender.com/warmup')
-    } catch (error) {
-      console.warn(`Error while warming up API: ${error}`)
-    }
-  }
-
-  warmupAPI();
-}, []);
-
 const ImageUpload = () => {
   const [dragActive, setDragActive] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
@@ -36,14 +23,28 @@ const ImageUpload = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [clothingItems, setClothingItems] = useLocalStorage<ClothingItem[]>('clothing-items', []);
 
+  // API Warmup
+  useEffect(() => {
+    const warmupAPI = async () => {
+      try {
+        const response = await fetch('https://ncti3zqpfjz7ds3ug5sorxgffy0wcjhb.lambda-url.us-east-1.on.aws/warmup')
+      } catch (error) {
+        console.warn(`Error while warming up API: ${error}`)
+      }
+    }
+
+    warmupAPI();
+  }, []);
+
   const removeBackground = async (file: File) : Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);
 
     try {
-      const response = await fetch('https://fitted-background-removal.onrender.com/api/remove-background', {
+      const response = await fetch('https://ncti3zqpfjz7ds3ug5sorxgffy0wcjhb.lambda-url.us-east-1.on.aws/api/remove-background', {
         method: 'POST',
         body: formData,
+        mode: 'cors',
         credentials: 'omit',
       });
 
