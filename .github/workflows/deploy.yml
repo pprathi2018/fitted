@@ -33,7 +33,7 @@ jobs:
       uses: aws-actions/amazon-ecr-login@v1
 
     - name: Build Docker Image
-      run: docker build -t fitted-bg-removal .
+      run: docker build -t fitted-bg-removal fitted-background-removal/.
 
     - name: Tag Docker Image
       env:
