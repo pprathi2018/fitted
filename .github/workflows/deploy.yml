@@ -10,7 +10,7 @@ on:
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ECR_REGISTRY: 882875132161.dkr.ecr.us-east-1.amazonaws.com
-  REPOSITORY_NAME = fitted-background-removal
+  REPOSITORY_NAME: fitted-background-removal
   LAMBDA_FUNCTION_NAME: fitted-background-removal
 
 jobs:
