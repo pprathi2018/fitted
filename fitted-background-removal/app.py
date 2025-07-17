@@ -67,7 +67,7 @@ async def remove_background(file: UploadFile = File(...), use_cloth_seg: bool = 
     except Exception as e:
         logger.error(f"Failed to initialize background remover: {e}")
         raise HTTPException(
-            status_code=503, 
+            status_code=500, 
             detail="Background removal service is not available. Please try again later."
         )
     

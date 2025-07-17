@@ -9,7 +9,6 @@ from rembg import remove, new_session
 import io
 import numpy as np
 
-# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -35,6 +34,7 @@ class BackgroundRemover:
         except Exception as e:
             raise BackgroundRemovalError(f"Failed to initialize {model_name}: {e}")
     
+    # Only used for manual testing
     def _validate_input_file(self, input_path: str) -> None:
         if not os.path.exists(input_path):
             raise FileNotFoundError(f"Input image file does not exist: {input_path}")
@@ -129,6 +129,7 @@ class BackgroundRemover:
       else:
           raise BackgroundRemovalError("Unknown output type from rembg.remove")
     
+    # Only used for manual testing
     def remove_background_from_file(self, input_path: str, output_path: str) -> None:
         try:
             logger.info(f"Processing file: {input_path}")
@@ -138,7 +139,7 @@ class BackgroundRemover:
             try:
                 input_image = Image.open(input_path)
             except Exception as e:
-                raise BackgroundRemovalError(f"Failed to load image: {e}")
+                raise FileNotFoundError(f"Failed to load image: {e}")
             
             original_size = input_image.size
             prepared_image = self._prepare_image_for_processing(input_image)
@@ -150,7 +151,9 @@ class BackgroundRemover:
             result_image.save(output_path, format="PNG", optimize=True)
             
             logger.info( f"Background removal completed successfully using {self.active_model}")
-            
+
+        except FileNotFoundError as e:
+            raise FileNotFoundError(e)     
         except Exception as e:
             logger.error(f"Background removal failed: {str(e)}")
             raise BackgroundRemovalError(f"Background removal failed: {str(e)}")
@@ -163,7 +166,7 @@ class BackgroundRemover:
                 input_image = Image.open(io.BytesIO(image_bytes))
             except Exception as e:
                 logger.error(f"Failed to load image from bytes: {e}")
-                return None
+                raise BackgroundRemovalError(f"Failed to load image from bytes: {e}")
             
             original_size = input_image.size
             prepared_image = self._prepare_image_for_processing(input_image)

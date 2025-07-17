@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Upload, X, Check } from 'lucide-react';
+import { Upload, X, Check, AlertCircle, RefreshCw, Plus } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { ClothingItem } from '@/types/clothing';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -22,12 +22,15 @@ const ImageUpload = () => {
   const [itemName, setItemName] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [clothingItems, setClothingItems] = useLocalStorage<ClothingItem[]>('clothing-items', []);
+  
+  const [processingError, setProcessingError] = useState(false);
+  const [lastFailedFile, setLastFailedFile] = useState<File | null>(null);
 
   // API Warmup
   useEffect(() => {
     const warmupAPI = async () => {
       try {
-        const response = await fetch('https://ncti3zqpfjz7ds3ug5sorxgffy0wcjhb.lambda-url.us-east-1.on.aws/warmup')
+        await fetch('https://ncti3zqpfjz7ds3ug5sorxgffy0wcjhb.lambda-url.us-east-1.on.aws/warmup')
       } catch (error) {
         console.warn(`Error while warming up API: ${error}`)
       }
@@ -54,36 +57,36 @@ const ImageUpload = () => {
 
       const blob = await response.blob();
 
-      const url = URL.createObjectURL(blob);
-      return url;
+      return blobToBase64(blob);
     } catch (error) {
       throw error;
     }
   }
 
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
   const processImage = useCallback((file: File) => {
     setIsProcessing(true);
-    
-    // const reader = new FileReader();
-    // reader.onload = (e) => {
-    //   const result = e.target?.result as string;
-      
-    //   // Simulate background removal processing
-    //   setTimeout(() => {
-    //     setUploadedImage(result);
-    //     setIsProcessing(false);
-    //   }, 1500);
-    // };
-    // reader.readAsDataURL(file);
+    setProcessingError(false);
 
     removeBackground(file)
     .then((url) => {
       setUploadedImage(url);
+      setProcessingError(false);
+      setLastFailedFile(null);
     })
     .catch((error) => {
       setUploadedImage(null);
+      setProcessingError(true);
+      setLastFailedFile(file);
       console.error(error);
-      alert(error);
     })
     .finally(() => {
       setIsProcessing(false);
@@ -123,6 +126,18 @@ const ImageUpload = () => {
     }
   }, [processImage]);
 
+  const handleRetry = () => {
+    if (lastFailedFile) {
+      processImage(lastFailedFile);
+    }
+  };
+
+  const handleUploadNew = () => {
+    setProcessingError(false);
+    setLastFailedFile(null);
+    setUploadedImage(null);
+  };
+
   const saveToCloset = () => {
     if (!uploadedImage || !itemName.trim()) return;
 
@@ -142,13 +157,15 @@ const ImageUpload = () => {
   const resetForm = () => {
     setUploadedImage(null);
     setItemName('');
+    setProcessingError(false);
+    setLastFailedFile(null);
   };
 
   return (
     <div className="upload-container">
       <h1 className="upload-title">Upload Clothing Item</h1>
 
-      {!uploadedImage ? (
+      {!uploadedImage && !processingError ? (
         <div
           className={`upload-dropzone ${dragActive ? 'active' : ''}`}
           onDragEnter={handleDrag}
@@ -182,11 +199,29 @@ const ImageUpload = () => {
             </div>
           )}
         </div>
+      ) : processingError ? (
+        <div className="upload-error-box">
+          <div className="error-content">
+            <AlertCircle className="error-icon" />
+            <p className="error-text">Image Processing Failed</p>
+            <p className="error-subtext">Failed to process image. Please try again.</p>
+          </div>
+          <div className="error-buttons">
+            <button onClick={handleRetry} className="retry-button">
+              <RefreshCw className="retry-icon" />
+              <span>Try Again</span>
+            </button>
+            <button onClick={handleUploadNew} className="new-upload-button">
+              <Plus className="new-upload-icon" />
+              <span>Upload New Image</span>
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="upload-form">
           <div className="form-image-preview">
             <img
-              src={uploadedImage}
+              src={uploadedImage ?? undefined}
               alt="Uploaded clothing item"
               className="preview-image"
             />
