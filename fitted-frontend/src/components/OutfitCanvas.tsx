@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { DndProvider, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Trash2, MoveUp, MoveDown } from 'lucide-react';
+import { Trash2, MoveUp, MoveDown, ChevronDown, ChevronUp } from 'lucide-react';
 import { ClothingItem as ClothingItemType, OutfitItem } from '@/types/clothing';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import ClothingItemSidePanel from './ClothingItemSidePanel';
@@ -14,6 +14,8 @@ const OutfitCanvas = () => {
   const [outfitItems, setOutfitItems] = useState<OutfitItem[]>([]);
   const [nextZIndex, setNextZIndex] = useState(1);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
   const groupedItems = useMemo(() => {
     return clothingItems.reduce((acc, item) => {
@@ -90,6 +92,13 @@ const OutfitCanvas = () => {
         : item
     ));
   }, [selectedItemId, outfitItems]);
+
+  const toggleSection = useCallback((category: string) => {
+    setCollapsedSections(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+  }, []);
 
   const CanvasDropZone = () => {
     const [{ isOver }, drop] = useDrop(() => ({
@@ -191,14 +200,30 @@ const OutfitCanvas = () => {
               <div className="categories-container">
                 {Object.entries(groupedItems).map(([category, items]) => (
                   <div key={category} className="category-section">
-                    <h3 className="category-title">
-                      {category} ({items.length})
-                    </h3>
-                    <div className="category-grid">
-                      {items.map((item) => (
-                        <ClothingItemSidePanel key={item.id} item={item} inOutfit={outfitContainsClothingItem(item.id)} />
-                      ))}
-                    </div>
+                    <button
+                      className="category-header"
+                      onClick={() => toggleSection(category)}
+                    >
+                      <h3 className="category-title">
+                        {category} ({items.length})
+                      </h3>
+                      {collapsedSections[category] ? (
+                        <ChevronDown className="category-chevron" />
+                      ) : (
+                        <ChevronUp className="category-chevron" />
+                      )}
+                    </button>
+                    {!collapsedSections[category] && (
+                      <div className="category-items-wrapper">
+                        <div className="category-items-scroll">
+                          {items.map((item) => (
+                            <div key={item.id} className="category-item-container">
+                              <ClothingItemSidePanel item={item} inOutfit={outfitContainsClothingItem(item.id)} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
