@@ -30,21 +30,22 @@ public class ClothingItemService {
 
     @Transactional
     public ClothingItemResponse saveClothingItem(CreateClothingItemRequest request) {
-        log.info("Started save clothing item request: name={}", request.getName());
+        log.info("Started save clothing item request: name={}, user={}", request.getName(), request.getUser().getId());
         try {
             MultipartFile originalImageFile = validateFile(request.getOriginalImageFile());
             MultipartFile modifiedImageFile = validateFile(request.getModifiedImageFile());
 
             UUID clothingItemId = UUID.randomUUID();
+            String userId = request.getUser().getId().toString();
 
             log.info("Attempting to save original image to S3: {}", originalImageFile.getOriginalFilename());
-            String originalItemKey = getFileKey("userId", clothingItemId.toString(), ORIGINAL_IMAGE_TYPE,
+            String originalItemKey = getFileKey(userId, clothingItemId.toString(), ORIGINAL_IMAGE_TYPE,
                     getFileExtension(originalImageFile.getOriginalFilename()));
             String originalItemS3Url = s3FileUploadService.uploadImageFileSimple(originalImageFile, originalItemKey);
             log.info("Saved original image to S3: {}", originalItemS3Url);
 
             log.info("Attempting to save modified image to S3: {}", modifiedImageFile.getOriginalFilename());
-            String modifiedItemKey = getFileKey("userId", clothingItemId.toString(), MODIFIED_IMAGE_TYPE,
+            String modifiedItemKey = getFileKey(userId, clothingItemId.toString(), MODIFIED_IMAGE_TYPE,
                     getFileExtension(modifiedImageFile.getOriginalFilename()));
             String modifiedItemS3Url = s3FileUploadService.uploadImageFileSimple(modifiedImageFile, modifiedItemKey);
             log.info("Saved modified image to S3: {}", modifiedItemS3Url);
@@ -57,6 +58,7 @@ public class ClothingItemService {
                     .originalImageUrl(originalItemS3Url)
                     .modifiedImageUrl(modifiedItemS3Url)
                     .color(request.getColor())
+                    .user(request.getUser())
                     .build();
             ClothingItem saved = clothingItemRepository.save(clothingItem);
             log.info("Save clothing item was successful");
@@ -68,6 +70,7 @@ public class ClothingItemService {
                     .originalImageUrl(saved.getOriginalImageUrl())
                     .modifiedImageUrl(saved.getModifiedImageUrl())
                     .color(saved.getColor())
+                    .userId(saved.getUser().getId().toString())
                     .createdAt(saved.getCreatedAt())
                     .build();
         } catch (S3FileUploadValidationException e) {

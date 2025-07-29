@@ -1,6 +1,6 @@
 package com.fitted.service.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fitted.service.auth.model.Users;
 import com.fitted.service.model.ClothingType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -23,4 +23,5 @@ public class CreateClothingItemRequest {
     private MultipartFile originalImageFile;
     private MultipartFile modifiedImageFile;
     private String color;
+    private Users user;
 }

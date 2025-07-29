@@ -1,6 +1,16 @@
 package com.fitted.service.model;
 
-import jakarta.persistence.*;
+import com.fitted.service.auth.model.Users;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -32,6 +42,9 @@ public class ClothingItem {
     private String color;
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private Users user;
 
     @PrePersist
     protected void onCreate() {

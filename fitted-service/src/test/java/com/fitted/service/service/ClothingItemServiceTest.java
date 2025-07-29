@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
+import static com.fitted.service.utils.TestDataUtils.USER_ID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -60,6 +61,7 @@ class ClothingItemServiceTest {
         assertEquals(TestDataUtils.TEST_S3_URL_ORIGINAL, response.getOriginalImageUrl());
         assertEquals(TestDataUtils.TEST_S3_URL_MODIFIED, response.getModifiedImageUrl());
         assertEquals("Blue", response.getColor());
+        assertEquals(USER_ID, response.getUserId());
 
         verify(s3FileUploadService, times(2)).uploadImageFileSimple(any(MultipartFile.class), anyString());
         verify(clothingItemRepository, times(1)).save(any(ClothingItem.class));

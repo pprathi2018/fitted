@@ -1,5 +1,6 @@
 package com.fitted.service.utils;
 
+import com.fitted.service.auth.model.Users;
 import com.fitted.service.dto.ClothingItemResponse;
 import com.fitted.service.dto.CreateClothingItemRequest;
 import com.fitted.service.model.ClothingItem;
@@ -18,6 +19,13 @@ public class TestDataUtils {
     public static final String JPEG_CONTENT_TYPE = "image/jpeg";
     public static final String PNG_CONTENT_TYPE = "image/png";
     public static final String TEXT_CONTENT_TYPE = "text/plain";
+    public static final String USER_ID = "userId";
+    public static final Users USER = Users.builder()
+            .id(UUID.fromString(USER_ID))
+            .email("test@email.com")
+            .firstName("test")
+            .lastName("test")
+            .build();
 
     public static MockMultipartFile createValidJpegFile(String fileName) {
         return new MockMultipartFile(
@@ -46,6 +54,7 @@ public class TestDataUtils {
                 .originalImageFile(createValidJpegFile("original.jpg"))
                 .modifiedImageFile(createValidPngFile("modified.png"))
                 .color("Blue")
+                .user(USER)
                 .build();
     }
 
@@ -58,6 +67,7 @@ public class TestDataUtils {
                 .modifiedImageUrl(TEST_S3_URL_MODIFIED)
                 .color("Blue")
                 .createdAt(LocalDateTime.now())
+                .user(USER)
                 .build();
     }
 
@@ -70,6 +80,7 @@ public class TestDataUtils {
                 .modifiedImageUrl(TEST_S3_URL_MODIFIED)
                 .color("Blue")
                 .createdAt(LocalDateTime.now())
+                .userId(USER_ID)
                 .build();
     }
 }

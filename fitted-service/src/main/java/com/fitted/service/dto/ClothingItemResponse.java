@@ -25,4 +25,5 @@ public class ClothingItemResponse {
     private String color;
     @JsonProperty("created_at")
     private LocalDateTime createdAt;
+    private String userId;
 }
