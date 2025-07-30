@@ -3,6 +3,7 @@ package com.fitted.service.service;
 import com.fitted.service.dto.ClothingItemResponse;
 import com.fitted.service.dto.CreateClothingItemRequest;
 import com.fitted.service.exception.InternalServerException;
+import com.fitted.service.exception.ResourceNotFoundException;
 import com.fitted.service.exception.ValidationException;
 import com.fitted.service.exception.s3.S3FileUploadServerException;
 import com.fitted.service.exception.s3.S3FileUploadValidationException;
@@ -78,6 +79,29 @@ public class ClothingItemService {
         } catch (S3FileUploadServerException e) {
             throw new InternalServerException("Internal server error while uploading image to S3", e);
         }
+    }
+
+    public ClothingItemResponse getClothingItem(String clothingItemId) {
+        log.info("Started get clothing item request: clothingItemId={}", clothingItemId);
+        ClothingItem clothingItem = clothingItemRepository.findById(UUID.fromString(clothingItemId)).orElseThrow(
+                () -> new ResourceNotFoundException(String.format("Clothing item with id: %s not found.", clothingItemId))
+        );
+
+        return ClothingItemResponse.builder()
+                .id(clothingItem.getId())
+                .name(clothingItem.getName())
+                .type(clothingItem.getType())
+                .originalImageUrl(clothingItem.getOriginalImageUrl())
+                .modifiedImageUrl(clothingItem.getModifiedImageUrl())
+                .color(clothingItem.getColor())
+                .userId(clothingItem.getUser().getId().toString())
+                .createdAt(clothingItem.getCreatedAt())
+                .build();
+    }
+
+    public void deleteClothingItem(String clothingItemId) {
+        log.info("Started delete clothing item request: clothingItemId={}", clothingItemId);
+        clothingItemRepository.deleteById(UUID.fromString(clothingItemId));
     }
 
     private MultipartFile validateFile(MultipartFile file) {

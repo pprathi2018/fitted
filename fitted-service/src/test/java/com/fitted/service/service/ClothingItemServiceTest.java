@@ -9,7 +9,7 @@ import com.fitted.service.exception.s3.S3FileUploadValidationException;
 import com.fitted.service.model.ClothingItem;
 import com.fitted.service.model.ClothingType;
 import com.fitted.service.repository.ClothingItemRepository;
-import com.fitted.service.utils.TestDataUtils;
+import com.fitted.service.utils.ServiceTestDataUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,7 +20,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
-import static com.fitted.service.utils.TestDataUtils.USER_ID;
+import static com.fitted.service.utils.ServiceTestDataUtils.USER;
+import static com.fitted.service.utils.ServiceTestDataUtils.USER_ID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -41,13 +42,13 @@ class ClothingItemServiceTest {
     @Test
     void saveClothingItem_Success() {
         // Arrange
-        CreateClothingItemRequest request = TestDataUtils.createValidRequest();
+        CreateClothingItemRequest request = ServiceTestDataUtils.createValidRequest();
         UUID mockId = UUID.randomUUID();
-        ClothingItem savedItem = TestDataUtils.createClothingItem(mockId);
+        ClothingItem savedItem = ServiceTestDataUtils.createClothingItem(mockId);
 
         when(s3FileUploadService.uploadImageFileSimple(any(MultipartFile.class), anyString()))
-                .thenReturn(TestDataUtils.TEST_S3_URL_ORIGINAL)
-                .thenReturn(TestDataUtils.TEST_S3_URL_MODIFIED);
+                .thenReturn(ServiceTestDataUtils.TEST_S3_URL_ORIGINAL)
+                .thenReturn(ServiceTestDataUtils.TEST_S3_URL_MODIFIED);
         when(clothingItemRepository.save(any(ClothingItem.class))).thenReturn(savedItem);
 
         // Act
@@ -58,8 +59,8 @@ class ClothingItemServiceTest {
         assertEquals(mockId, response.getId());
         assertEquals("Blue Jeans", response.getName());
         assertEquals(ClothingType.BOTTOM, response.getType());
-        assertEquals(TestDataUtils.TEST_S3_URL_ORIGINAL, response.getOriginalImageUrl());
-        assertEquals(TestDataUtils.TEST_S3_URL_MODIFIED, response.getModifiedImageUrl());
+        assertEquals(ServiceTestDataUtils.TEST_S3_URL_ORIGINAL, response.getOriginalImageUrl());
+        assertEquals(ServiceTestDataUtils.TEST_S3_URL_MODIFIED, response.getModifiedImageUrl());
         assertEquals("Blue", response.getColor());
         assertEquals(USER_ID, response.getUserId());
 
@@ -74,7 +75,8 @@ class ClothingItemServiceTest {
                 .name("Test Item")
                 .type(ClothingType.TOP)
                 .originalImageFile(null)
-                .modifiedImageFile(TestDataUtils.createValidPngFile("modified.png"))
+                .modifiedImageFile(ServiceTestDataUtils.createValidPngFile("modified.png"))
+                .user(USER)
                 .build();
 
         // Act & Assert
@@ -93,8 +95,9 @@ class ClothingItemServiceTest {
         CreateClothingItemRequest request = CreateClothingItemRequest.builder()
                 .name("Test Item")
                 .type(ClothingType.TOP)
-                .originalImageFile(TestDataUtils.createInvalidFile("original.txt"))
-                .modifiedImageFile(TestDataUtils.createValidPngFile("modified.png"))
+                .originalImageFile(ServiceTestDataUtils.createInvalidFile("original.txt"))
+                .modifiedImageFile(ServiceTestDataUtils.createValidPngFile("modified.png"))
+                .user(USER)
                 .build();
 
         // Act & Assert
@@ -108,7 +111,7 @@ class ClothingItemServiceTest {
     @Test
     void saveClothingItem_S3ValidationException_ThrowsValidationException() {
         // Arrange
-        CreateClothingItemRequest request = TestDataUtils.createValidRequest();
+        CreateClothingItemRequest request = ServiceTestDataUtils.createValidRequest();
 
         when(s3FileUploadService.uploadImageFileSimple(any(MultipartFile.class), anyString()))
                 .thenThrow(new S3FileUploadValidationException("File too large"));
@@ -125,7 +128,7 @@ class ClothingItemServiceTest {
     @Test
     void saveClothingItem_S3ServerException_ThrowsInternalServerException() {
         // Arrange
-        CreateClothingItemRequest request = TestDataUtils.createValidRequest();
+        CreateClothingItemRequest request = ServiceTestDataUtils.createValidRequest();
 
         when(s3FileUploadService.uploadImageFileSimple(any(MultipartFile.class), anyString()))
                 .thenThrow(new S3FileUploadServerException("S3 connection failed"));
@@ -142,10 +145,10 @@ class ClothingItemServiceTest {
     @Test
     void saveClothingItem_DatabaseException_ThrowsDataAccessException() {
         // Arrange
-        CreateClothingItemRequest request = TestDataUtils.createValidRequest();
+        CreateClothingItemRequest request = ServiceTestDataUtils.createValidRequest();
 
         when(s3FileUploadService.uploadImageFileSimple(any(MultipartFile.class), anyString()))
-                .thenReturn(TestDataUtils.TEST_S3_URL_ORIGINAL);
+                .thenReturn(ServiceTestDataUtils.TEST_S3_URL_ORIGINAL);
         when(clothingItemRepository.save(any(ClothingItem.class)))
                 .thenThrow(new DataAccessException("Database connection failed") {});
 

@@ -6,7 +6,7 @@ import com.fitted.service.exception.GlobalExceptionHandler;
 import com.fitted.service.exception.InternalServerException;
 import com.fitted.service.exception.ValidationException;
 import com.fitted.service.service.ClothingItemService;
-import com.fitted.service.utils.TestDataUtils;
+import com.fitted.service.utils.ServiceTestDataUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,7 +51,7 @@ class ClothingItemControllerTest {
         MockMultipartFile modifiedImage = new MockMultipartFile(
                 "modifiedImageFile", "modified.png", "image/png", "test content".getBytes());
 
-        ClothingItemResponse response = TestDataUtils.createClothingItemResponse(UUID.randomUUID());
+        ClothingItemResponse response = ServiceTestDataUtils.createClothingItemResponse(UUID.randomUUID());
 
         when(clothingItemService.saveClothingItem(any(CreateClothingItemRequest.class)))
                 .thenReturn(response);

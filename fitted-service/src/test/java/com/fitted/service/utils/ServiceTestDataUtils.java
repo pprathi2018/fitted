@@ -10,7 +10,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-public class TestDataUtils {
+public class ServiceTestDataUtils {
 
     public static final String TEST_BUCKET_NAME = "test-bucket";
     public static final String TEST_S3_URL_ORIGINAL = "s3://test-bucket/original.jpg";
@@ -19,7 +19,7 @@ public class TestDataUtils {
     public static final String JPEG_CONTENT_TYPE = "image/jpeg";
     public static final String PNG_CONTENT_TYPE = "image/png";
     public static final String TEXT_CONTENT_TYPE = "text/plain";
-    public static final String USER_ID = "userId";
+    public static final String USER_ID = "a81bc81b-dead-4e5d-abff-90865d1e13b1";
     public static final Users USER = Users.builder()
             .id(UUID.fromString(USER_ID))
             .email("test@email.com")

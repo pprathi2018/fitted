@@ -3,7 +3,7 @@ package com.fitted.service.service;
 import com.fitted.service.exception.s3.S3FileUploadServerException;
 import com.fitted.service.exception.s3.S3FileUploadValidationException;
 import com.fitted.service.properties.AWSProperties;
-import com.fitted.service.utils.TestDataUtils;
+import com.fitted.service.utils.ServiceTestDataUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -36,12 +36,12 @@ class S3FileUploadServiceTest {
     @Test
     void uploadImageFileSimple_Success() {
         // Arrange
-        MockMultipartFile imageFile = TestDataUtils.createValidJpegFile("test.jpg");
+        MockMultipartFile imageFile = ServiceTestDataUtils.createValidJpegFile("test.jpg");
         String keyFileName = "test-key";
 
         // Setup mocks for this specific test
         when(awsProperties.getS3()).thenReturn(s3Properties);
-        when(s3Properties.getBucketName()).thenReturn(TestDataUtils.TEST_BUCKET_NAME);
+        when(s3Properties.getBucketName()).thenReturn(ServiceTestDataUtils.TEST_BUCKET_NAME);
         when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
                 .thenReturn(PutObjectResponse.builder().build());
 
@@ -67,7 +67,7 @@ class S3FileUploadServiceTest {
     @Test
     void uploadImageFileSimple_EmptyFile_ThrowsValidationException() {
         // Arrange
-        MockMultipartFile emptyFile = TestDataUtils.createEmptyFile("test.jpg");
+        MockMultipartFile emptyFile = ServiceTestDataUtils.createEmptyFile("test.jpg");
 
         // Act & Assert - No mocks needed for validation
         S3FileUploadValidationException exception = assertThrows(S3FileUploadValidationException.class, () -> {
@@ -81,7 +81,7 @@ class S3FileUploadServiceTest {
     @Test
     void uploadImageFileSimple_FileTooLarge_ThrowsValidationException() {
         // Arrange
-        MockMultipartFile largeFile = spy(TestDataUtils.createValidJpegFile("large.jpg"));
+        MockMultipartFile largeFile = spy(ServiceTestDataUtils.createValidJpegFile("large.jpg"));
         when(largeFile.getSize()).thenReturn(3L * 1024 * 1024 * 1024); // 3GB
 
         // Act & Assert - No mocks needed for validation
@@ -96,12 +96,12 @@ class S3FileUploadServiceTest {
     @Test
     void uploadImageFileSimple_S3Exception_ThrowsServerException() {
         // Arrange
-        MockMultipartFile imageFile = TestDataUtils.createValidJpegFile("test.jpg");
+        MockMultipartFile imageFile = ServiceTestDataUtils.createValidJpegFile("test.jpg");
         String keyFileName = "test-key";
 
         // Setup mocks for this specific test
         when(awsProperties.getS3()).thenReturn(s3Properties);
-        when(s3Properties.getBucketName()).thenReturn(TestDataUtils.TEST_BUCKET_NAME);
+        when(s3Properties.getBucketName()).thenReturn(ServiceTestDataUtils.TEST_BUCKET_NAME);
         when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
                 .thenThrow(S3Exception.builder().message("S3 error").build());
 
@@ -117,12 +117,12 @@ class S3FileUploadServiceTest {
     @Test
     void uploadImageFileMultipart_Success() {
         // Arrange
-        MockMultipartFile imageFile = TestDataUtils.createValidJpegFile("test.jpg");
+        MockMultipartFile imageFile = ServiceTestDataUtils.createValidJpegFile("test.jpg");
         String keyFileName = "test-key";
 
         // Setup mocks
         when(awsProperties.getS3()).thenReturn(s3Properties);
-        when(s3Properties.getBucketName()).thenReturn(TestDataUtils.TEST_BUCKET_NAME);
+        when(s3Properties.getBucketName()).thenReturn(ServiceTestDataUtils.TEST_BUCKET_NAME);
 
         CreateMultipartUploadResponse createResponse = CreateMultipartUploadResponse.builder()
                 .uploadId("test-upload-id")
@@ -133,7 +133,7 @@ class S3FileUploadServiceTest {
                 .build();
 
         CompleteMultipartUploadResponse completeResponse = CompleteMultipartUploadResponse.builder()
-                .bucket(TestDataUtils.TEST_BUCKET_NAME)
+                .bucket(ServiceTestDataUtils.TEST_BUCKET_NAME)
                 .key(keyFileName)
                 .build();
 
@@ -157,12 +157,12 @@ class S3FileUploadServiceTest {
     @Test
     void uploadImageFileMultipart_S3Error_AbortsUpload() {
         // Arrange
-        MockMultipartFile imageFile = TestDataUtils.createValidJpegFile("test.jpg");
+        MockMultipartFile imageFile = ServiceTestDataUtils.createValidJpegFile("test.jpg");
         String keyFileName = "test-key";
 
         // Setup mocks
         when(awsProperties.getS3()).thenReturn(s3Properties);
-        when(s3Properties.getBucketName()).thenReturn(TestDataUtils.TEST_BUCKET_NAME);
+        when(s3Properties.getBucketName()).thenReturn(ServiceTestDataUtils.TEST_BUCKET_NAME);
         when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
                 .thenThrow(S3Exception.builder().message("S3 error").build());
 

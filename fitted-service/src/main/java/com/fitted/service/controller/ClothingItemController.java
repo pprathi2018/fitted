@@ -10,9 +10,12 @@ import jakarta.validation.constraints.NotNull;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -54,5 +57,31 @@ public class ClothingItemController {
         log.info("Successfully saved clothing item with name: {}, id: {}", response.getName(), response.getId());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping(value = "/clothing-items")
+    public ResponseEntity<ClothingItemResponse> getClothingItem(
+            @RequestParam(name = "clothingItemId") String clothingItemId
+    ) {
+        log.info("Received GetClothingItem request: clothingItemId={}", clothingItemId);
+
+        ClothingItemResponse response = clothingItemService.getClothingItem(clothingItemId);
+
+        log.info("Successfully retrieved clothing item with name: {}, id: {}", response.getName(), response.getId());
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @DeleteMapping(value = "/clothing-items")
+    public ResponseEntity<Void> deleteClothingItem(
+            @RequestParam(name = "clothingItemId") String clothingItemId
+    ) {
+        log.info("Received DeleteClothingItem request: clothingItemId={}", clothingItemId);
+
+        clothingItemService.deleteClothingItem(clothingItemId);
+
+        log.info("Successfully deleted clothing item with id: {}", clothingItemId);
+
+        return ResponseEntity.status(HttpStatusCode.valueOf(200)).build();
     }
 }
