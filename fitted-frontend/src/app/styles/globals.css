@@ -118,6 +118,7 @@ h1 {
 @import './pages/home.css';
 @import './pages/closet.css';
 @import './pages/outfit.css';
+@import './pages/profile.css';
 
 /* Component styles */
 @import './components/navigation.css';

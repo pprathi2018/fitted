@@ -2,45 +2,45 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Upload, Shirt, Palette } from 'lucide-react';
+import { Home, Upload, Shirt, Palette, User } from 'lucide-react';
 
 const Navigation = () => {
   const pathname = usePathname();
 
+  const navItems = [
+    { href: '/', icon: Home, label: 'Home' },
+    { href: '/upload', icon: Upload, label: 'Upload' },
+    { href: '/closet', icon: Shirt, label: 'Closet' },
+    { href: '/outfit', icon: Palette, label: 'Outfit' },
+  ];
+
   return (
-    <nav className="bg-navy-dark border-b-4 border-black">
-      <div className="flex items-center justify-between h-[60px] px-[3vw]">
-        <div className="flex items-center">
-          <span className="nav-brand">Fitted</span>
+    <nav className="navigation">
+      <div className="nav-container">
+        <div className="nav-left">
+          <p className="nav-brand">Fitted</p>
           
-          <Link 
-            href="/" 
-            className={`nav-icon ${pathname === '/' ? 'active' : ''}`}
-          >
-            <Home size={36} />
-          </Link>
+          <div className="nav-center">
+            {navItems.map(({ href, icon: Icon, label }) => (
+              <Link
+                key={href}
+                href={href}
+                className={`nav-link ${pathname === href ? 'active' : ''}`}
+              >
+                <Icon className="nav-link-icon" strokeWidth={1.5} />
+                <span className="nav-link-text">{label}</span>
+              </Link>
+            ))}
+          </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <Link 
-            href="/upload" 
-            className={`nav-icon ${pathname === '/upload' ? 'active' : ''}`}
+        <div className="nav-right">
+          <Link
+            href="/profile"
+            className={`profile-button ${pathname === '/profile' ? 'active' : ''}`}
+            aria-label="User Profile"
           >
-            <Upload size={36} />
-          </Link>
-          
-          <Link 
-            href="/closet" 
-            className={`nav-icon ${pathname === '/closet' ? 'active' : ''}`}
-          >
-            <Shirt size={36} />
-          </Link>
-          
-          <Link 
-            href="/outfit" 
-            className={`nav-icon ${pathname === '/outfit' ? 'active' : ''}`}
-          >
-            <Palette size={36} />
+            <User className="profile-icon" strokeWidth={1.5} />
           </Link>
         </div>
       </div>
