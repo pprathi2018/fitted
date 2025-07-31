@@ -20,6 +20,7 @@
   padding: 3rem;
   text-align: center;
   transition: all 0.2s ease;
+  background: #f9fafb;
 }
 
 .upload-dropzone.active {

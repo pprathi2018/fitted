@@ -1,13 +1,13 @@
 /* Profile page styles */
 .profile-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #ffffff 0%, #f0f4f8 25%, #dbeafe 50%, #bfdbfe 75%, #93c5fd 100%);
+  background: rgba(186, 227, 253, 0.2);
   position: relative;
   overflow: hidden;
 }
 
 /* Add flowing blue gradient overlay */
-.profile-page::before {
+/* .profile-page::before {
   content: '';
   position: absolute;
   top: -50%;
@@ -22,7 +22,7 @@
 }
 
 /* Add second layer for more depth */
-.profile-page::after {
+/* .profile-page::after {
   content: '';
   position: absolute;
   bottom: -50%;
@@ -33,9 +33,9 @@
               radial-gradient(circle at 80% 20%, rgba(147, 197, 253, 0.12) 0%, transparent 60%);
   filter: blur(60px);
   animation: flow-reverse 30s ease-in-out infinite;
-}
+} */ */
 
-@keyframes flow {
+/* @keyframes flow {
   0%, 100% { transform: translate(0, 0) scale(1); }
   33% { transform: translate(30px, -30px) scale(1.1); }
   66% { transform: translate(-20px, 20px) scale(0.9); }
@@ -45,7 +45,7 @@
   0%, 100% { transform: translate(0, 0) scale(1); }
   33% { transform: translate(-30px, 30px) scale(0.9); }
   66% { transform: translate(20px, -20px) scale(1.1); }
-}
+} */
 
 .profile-content {
   position: relative;
