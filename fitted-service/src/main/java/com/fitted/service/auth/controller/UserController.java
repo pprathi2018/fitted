@@ -5,17 +5,22 @@ import com.fitted.service.auth.dto.LoginRequest;
 import com.fitted.service.auth.dto.RefreshTokenRequest;
 import com.fitted.service.auth.dto.SignUpRequest;
 import com.fitted.service.auth.service.FittedUserService;
+import com.fitted.service.auth.utils.CookieUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -26,32 +31,59 @@ public class UserController {
     @Autowired
     private final FittedUserService fittedUserService;
 
+    @Autowired
+    private final CookieUtils cookieUtils;
+
     @PostMapping("/signup")
     public ResponseEntity<AuthResponse> signup(@Valid @RequestBody SignUpRequest request) {
         log.info("Sign up request received for email: {}", request.getEmail());
         AuthResponse authResponse = fittedUserService.signup(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(authResponse);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .header(HttpHeaders.SET_COOKIE, cookieUtils.createAccessTokenCookie(authResponse.getAccessToken()))
+                .header(HttpHeaders.SET_COOKIE, cookieUtils.createRefreshTokenCookie(authResponse.getRefreshToken()))
+                .body(authResponse);
     }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         log.info("Log in request received for email: {}", request.getEmail());
         AuthResponse authResponse = fittedUserService.login(request);
-        return ResponseEntity.ok(authResponse);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookieUtils.createAccessTokenCookie(authResponse.getAccessToken()))
+                .header(HttpHeaders.SET_COOKIE, cookieUtils.createRefreshTokenCookie(authResponse.getRefreshToken()))
+                .body(authResponse);
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+    public ResponseEntity<AuthResponse> refresh(
+            @CookieValue(name = "refreshToken", required = false) String refreshTokenFromCookie,
+            @Valid @RequestBody(required = false) RefreshTokenRequest request) {
         log.info("Refresh token request received");
-        AuthResponse authResponse = fittedUserService.refreshToken(request.getRefreshToken());
-        return ResponseEntity.ok(authResponse);
+        String refreshToken = Objects.nonNull(refreshTokenFromCookie) ? refreshTokenFromCookie : request.getRefreshToken();
+
+        if (Objects.isNull(refreshToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        AuthResponse authResponse = fittedUserService.refreshToken(refreshToken);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookieUtils.createAccessTokenCookie(authResponse.getAccessToken()))
+                .header(HttpHeaders.SET_COOKIE, cookieUtils.createRefreshTokenCookie(authResponse.getRefreshToken()))
+                .body(authResponse);
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
+    public ResponseEntity<Void> logout(
+            @CookieValue(name = "refreshToken", required = false) String refreshTokenFromCookie,
+            @Valid @RequestBody(required = false) RefreshTokenRequest request) {
         log.info("Logout request received");
-        fittedUserService.logout(request.getRefreshToken());
-        return ResponseEntity.status(HttpStatusCode.valueOf(200)).build();
+        String refreshToken = Objects.nonNull(refreshTokenFromCookie) ? refreshTokenFromCookie : request.getRefreshToken();
+        fittedUserService.logout(refreshToken);
+        return ResponseEntity.status(HttpStatusCode.valueOf(200))
+                .header(HttpHeaders.SET_COOKIE, cookieUtils.createLogoutCookie("accessToken"))
+                .header(HttpHeaders.SET_COOKIE, cookieUtils.createLogoutCookie("refreshToken"))
+                .build();
     }
 
 

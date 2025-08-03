@@ -27,7 +27,7 @@ public class FittedPasswordValidator {
 
         if (!result.isValid()) {
             List<String> messages = validator.getMessages(result);
-            throw new IllegalArgumentException("Password validation failed: " + String.join(", ", messages));
+            throw new IllegalArgumentException(String.join("\n \n", messages));
         }
     }
 

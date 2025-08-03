@@ -1,51 +1,10 @@
 /* Profile page styles */
 .profile-page {
   min-height: 100vh;
-  background: rgba(186, 227, 253, 0.2);
+  background: #f9fafb;
   position: relative;
   overflow: hidden;
 }
-
-/* Add flowing blue gradient overlay */
-/* .profile-page::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -50%;
-  width: 150%;
-  height: 150%;
-  background: radial-gradient(circle at 70% 40%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
-              radial-gradient(circle at 30% 60%, rgba(147, 197, 253, 0.2) 0%, transparent 50%),
-              radial-gradient(circle at 50% 50%, rgba(96, 165, 250, 0.1) 0%, transparent 70%);
-  filter: blur(40px);
-  animation: flow 25s ease-in-out infinite;
-}
-
-/* Add second layer for more depth */
-/* .profile-page::after {
-  content: '';
-  position: absolute;
-  bottom: -50%;
-  left: -50%;
-  width: 150%;
-  height: 150%;
-  background: radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 60%),
-              radial-gradient(circle at 80% 20%, rgba(147, 197, 253, 0.12) 0%, transparent 60%);
-  filter: blur(60px);
-  animation: flow-reverse 30s ease-in-out infinite;
-} */ */
-
-/* @keyframes flow {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -30px) scale(1.1); }
-  66% { transform: translate(-20px, 20px) scale(0.9); }
-}
-
-@keyframes flow-reverse {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(-30px, 30px) scale(0.9); }
-  66% { transform: translate(20px, -20px) scale(1.1); }
-} */
 
 .profile-content {
   position: relative;

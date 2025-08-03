@@ -26,7 +26,7 @@ class FittedPasswordValidatorTest {
         // When & Then
         assertThatThrownBy(() -> validator.validate("Short1"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Password validation failed");
+                .hasMessageContaining("Password must be 8 or more characters in length.");
     }
 
     @Test
@@ -35,7 +35,7 @@ class FittedPasswordValidatorTest {
         String longPassword = "a".repeat(129);
         assertThatThrownBy(() -> validator.validate(longPassword))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Password validation failed");
+                .hasMessageContaining("Password must be no more than 128 characters in length.");
     }
 
     @Test
@@ -43,7 +43,7 @@ class FittedPasswordValidatorTest {
         // When & Then
         assertThatThrownBy(() -> validator.validate("Pass word 123"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Password validation failed");
+                .hasMessageContaining("Password contains a whitespace character.");
     }
 
     @Test

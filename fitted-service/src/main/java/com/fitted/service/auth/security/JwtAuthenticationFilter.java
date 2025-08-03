@@ -3,6 +3,7 @@ package com.fitted.service.auth.security;
 import com.fitted.service.auth.service.FittedUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -61,12 +65,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private String getJwtFromRequest(HttpServletRequest request) {
-        return extractTokenFromHeader(request.getHeader("Authorization"));
+        String bearerHeaderToken = extractTokenFromHeader(request.getHeader("Authorization"));
+
+        return StringUtils.hasText(bearerHeaderToken) ? bearerHeaderToken : extractTokenFromCookies(request);
     }
 
     private String extractTokenFromHeader(String authHeader) {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             return authHeader.substring(7);
+        }
+        return null;
+    }
+
+    private String extractTokenFromCookies(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (Objects.nonNull(cookies)) {
+            Optional<Cookie> accessTokenCookieOpt = Arrays.stream(cookies).filter(
+                    cookie -> "accessToken".equals(cookie.getName()))
+                    .findAny();
+            if (accessTokenCookieOpt.isPresent()) {
+                return accessTokenCookieOpt.get().getValue();
+            }
         }
         return null;
     }

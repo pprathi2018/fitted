@@ -1,10 +1,10 @@
 package com.fitted.service.auth.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fitted.service.auth.dto.LoginRequest;
 import com.fitted.service.auth.dto.RefreshTokenRequest;
 import com.fitted.service.auth.dto.SignUpRequest;
 import com.fitted.service.auth.service.FittedUserService;
+import com.fitted.service.auth.utils.CookieUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,6 +25,9 @@ class UserControllerTest {
     @Mock
     private FittedUserService fittedUserService;
 
+    @Mock
+    private CookieUtils cookieUtils;
+
     @InjectMocks
     private UserController userController;
 
@@ -33,6 +36,8 @@ class UserControllerTest {
         // Given
         SignUpRequest request = createSignUpRequest();
         when(fittedUserService.signup(any(SignUpRequest.class))).thenReturn(createAuthResponse());
+        when(cookieUtils.createAccessTokenCookie(any())).thenReturn(TEST_ACCESS_TOKEN);
+        when(cookieUtils.createRefreshTokenCookie(any())).thenReturn(TEST_REFRESH_TOKEN);
 
         // When
         ResponseEntity<?> response = userController.signup(request);
@@ -47,6 +52,8 @@ class UserControllerTest {
         // Given
         LoginRequest request = createLoginRequest();
         when(fittedUserService.login(any(LoginRequest.class))).thenReturn(createAuthResponse());
+        when(cookieUtils.createAccessTokenCookie(any())).thenReturn(TEST_ACCESS_TOKEN);
+        when(cookieUtils.createRefreshTokenCookie(any())).thenReturn(TEST_REFRESH_TOKEN);
 
         // When
         ResponseEntity<?> response = userController.login(request);
@@ -63,9 +70,11 @@ class UserControllerTest {
                 .refreshToken(TEST_REFRESH_TOKEN)
                 .build();
         when(fittedUserService.refreshToken(TEST_REFRESH_TOKEN)).thenReturn(createAuthResponse());
+        when(cookieUtils.createAccessTokenCookie(any())).thenReturn(TEST_ACCESS_TOKEN);
+        when(cookieUtils.createRefreshTokenCookie(any())).thenReturn(TEST_REFRESH_TOKEN);
 
         // When
-        ResponseEntity<?> response = userController.refresh(request);
+        ResponseEntity<?> response = userController.refresh(null, request);
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -79,9 +88,10 @@ class UserControllerTest {
                 .refreshToken(TEST_REFRESH_TOKEN)
                 .build();
         doNothing().when(fittedUserService).logout(TEST_REFRESH_TOKEN);
+        when(cookieUtils.createLogoutCookie(any())).thenReturn(TEST_ACCESS_TOKEN);
 
         // When
-        ResponseEntity<Void> response = userController.logout(request);
+        ResponseEntity<Void> response = userController.logout(null, request);
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);

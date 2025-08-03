@@ -1,3 +1,4 @@
+// src/app/upload/page.tsx
 import ImageUpload from '@/components/ImageUpload';
 
 export default function UploadPage() {

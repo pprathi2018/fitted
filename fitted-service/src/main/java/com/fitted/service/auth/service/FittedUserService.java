@@ -99,8 +99,12 @@ public class FittedUserService {
     public void logout(String refreshTokenStr) {
         log.info("Processing logout request");
 
-        String tokenHash = hashToken(refreshTokenStr);
+        if (refreshTokenStr == null) {
+            log.warn("Logout called with null refresh token");
+            return;
+        }
 
+        String tokenHash = hashToken(refreshTokenStr);
         refreshTokenRepository.findByTokenHash(tokenHash).ifPresent(token -> {
             token.setRevoked(true);
             refreshTokenRepository.save(token);
