@@ -62,7 +62,9 @@ public class UserController {
             @CookieValue(name = "refreshToken", required = false) String refreshTokenFromCookie,
             @Valid @RequestBody(required = false) RefreshTokenRequest request) {
         log.info("Refresh token request received");
-        String refreshToken = Objects.nonNull(refreshTokenFromCookie) ? refreshTokenFromCookie : request.getRefreshToken();
+        String refreshToken = Objects.nonNull(refreshTokenFromCookie) ? refreshTokenFromCookie :
+                Objects.nonNull(request) && Objects.nonNull(request.getRefreshToken()) ? request.getRefreshToken() :
+                null;
 
         if (Objects.isNull(refreshToken)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -103,6 +105,8 @@ public class UserController {
                 .firstName(userPrincipal.user().getFirstName())
                 .lastName(userPrincipal.user().getLastName())
                 .build();
+
+        log.info("Returned current user: {}", userInfo.getEmail());
 
         return ResponseEntity.ok(userInfo);
     }

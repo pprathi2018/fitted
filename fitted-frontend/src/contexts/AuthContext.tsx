@@ -2,7 +2,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { apiClient, AuthResponse, LoginRequest, SignupRequest, User } from '@/lib/api-client';
+import { useRouter } from 'next/navigation';
+import { apiClient, LoginRequest, SignupRequest, User } from '@/lib/api-client';
 
 interface AuthContextType {
   user: User | null;
@@ -29,27 +30,34 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+const AuthProviderWithRouter: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  // Initialize auth state on mount
+  let authInitialized = false;
+
+  // Inside AuthProvider
   useEffect(() => {
     const initializeAuth = async () => {
-      try {
-        // First, try to get user from localStorage for immediate UI update
+      if (authInitialized) {
         const storedUser = apiClient.getUser();
         if (storedUser) {
           setUser(storedUser);
+          setIsLoading(false);
+          return;
         }
+      }
 
-        // Then verify with backend (this will use httpOnly cookies)
+      try {
+        setIsLoading(true);
         const currentUser = await apiClient.getCurrentUser();
         if (currentUser) {
           setUser(currentUser);
+          apiClient.setUser(currentUser);
+          authInitialized = true;
         } else {
-          // No valid session, clear everything
           setUser(null);
           apiClient.removeUser();
         }
@@ -75,16 +83,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       const response = await apiClient.login(data);
       
-      // Set user in state
       setUser(response.user);
-      
-      // Get return URL from current URL params
-      const searchParams = new URLSearchParams(window.location.search);
-      const returnUrl = searchParams.get('returnUrl') || '/';
-      
-      // Navigate after a small delay to ensure state is saved
+
       setTimeout(() => {
-        window.location.href = returnUrl;
+        window.location.href = '/';
       }, 100);
       
     } catch (error) {
@@ -100,10 +102,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       const response = await apiClient.signup(data);
       
-      // Set user in state
       setUser(response.user);
       
-      // Navigate after a small delay to ensure state is saved
       setTimeout(() => {
         window.location.href = '/';
       }, 100);
@@ -117,25 +117,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = useCallback(async () => {
     try {
-      
-      // Call logout API to clear httpOnly cookies
       await apiClient.logout();
-
       setUser(null);
-      
-      // // Redirect to home
-      // window.location.href = '/';
+      router.refresh();
     } catch (error) {
       console.error('Logout error:', error);
-      // // Even if API fails, ensure we're logged out locally
-      window.location.href = '/profile';
+      setUser(null);
+      apiClient.removeUser();
+      router.refresh();
     }
-  }, []);
+  }, [router]);
 
   const value = {
     user,
     isLoading,
-    isAuthenticated: !!user,
+    isAuthenticated: Boolean(user),
     login,
     signup,
     logout,
@@ -145,3 +141,5 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+
+export const AuthProvider = AuthProviderWithRouter;

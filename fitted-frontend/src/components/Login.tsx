@@ -14,15 +14,13 @@ const Login = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, error, clearError, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const returnUrl = searchParams.get('returnUrl') || '/';
 
   useEffect(() => {
-    // If user is authenticated and we're not loading, redirect
+    // If user is authenticated and we're not loading, redirect immediately
     if (!isLoading && isAuthenticated) {
-      router.push(returnUrl);
+      router.push('/');
     }
-  }, [isAuthenticated, isLoading, router, returnUrl]);
+  }, [isAuthenticated, isLoading, router]);
 
   useEffect(() => {
     if (error) {
@@ -57,17 +55,9 @@ const Login = () => {
     );
   }
 
-  // If already authenticated, show redirect message
+  // If already authenticated, don't show anything (redirect will happen via useEffect)
   if (isAuthenticated) {
-    return (
-      <div className="login-container">
-        <div className="login-form-card">
-          <div className="text-center py-8">
-            <p className="text-gray-600">You are already logged in. Redirecting...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (

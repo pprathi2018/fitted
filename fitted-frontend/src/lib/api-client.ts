@@ -45,14 +45,13 @@ class ApiClient {
 
     let response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...fetchConfig,
-      credentials: 'include', // Always send cookies
+      credentials: 'include', // send cookies
       headers,
     });
 
     // Handle 401 errors for token refresh
     if (response.status === 401 && !skipAuth && !endpoint.includes('/api/auth/')) {
       if (this.isRefreshing) {
-        // Wait for the refresh to complete
         return new Promise((resolve, reject) => {
           this.failedQueue.push({ resolve, reject });
         }).then(() => this.request<T>(endpoint, config));
@@ -61,7 +60,6 @@ class ApiClient {
       this.isRefreshing = true;
 
       try {
-        // Try to refresh the token using direct fetch to avoid recursion
         const refreshResponse = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
           method: 'POST',
           credentials: 'include',
@@ -157,11 +155,10 @@ class ApiClient {
   async getCurrentUser(): Promise<User | null> {
     try {
       const user = await this.get<User>('/api/auth/me');
-      this.setUser(user);
+      console.log(`Retrieved user from backend: ${user}`)
       return user;
     } catch (error) {
       console.log('getCurrentUser failed, likely not authenticated');
-      this.removeUser();
       return null;
     }
   }

@@ -12,27 +12,22 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // For protected routes, check auth cookies
   const accessToken = request.cookies.get('accessToken');
   const refreshToken = request.cookies.get('refreshToken');
   
-  // Check if we have valid auth cookies
-  const hasValidAuth = (accessToken && accessToken.value) || (refreshToken && refreshToken.value);
+  const hasAccessToken = accessToken && accessToken.value && accessToken.value.length > 0;
+  const hasRefreshToken = refreshToken && refreshToken.value && refreshToken.value.length > 0;
   
-  if (!hasValidAuth) {
-    // Create redirect URL
-    console.log("Not valid auth");
+  if (!hasAccessToken || !hasRefreshToken) {
+    console.log("No valid auth tokens found");
     const url = request.nextUrl.clone();
     url.pathname = '/login';
-    url.searchParams.set('returnUrl', pathname);
     
     return NextResponse.redirect(url);
   }
   
   // Add headers to prevent caching of protected pages
   const response = NextResponse.next();
-  response.headers.set('Cache-Control', 'no-store, must-revalidate');
-  response.headers.set('Pragma', 'no-cache');
   
   return response;
 }
