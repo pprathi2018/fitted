@@ -60,6 +60,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/refresh").permitAll()
                         .requestMatchers("/").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/api/auth/me").authenticated()
+                        .requestMatchers("/api/auth/logout").authenticated()
                         .anyRequest().authenticated()
                 )
                 // Configure exception handling

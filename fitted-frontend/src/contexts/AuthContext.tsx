@@ -2,15 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { apiClient, AuthResponse, LoginRequest, SignupRequest } from '@/lib/api-client';
-
-interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-}
+import { apiClient, AuthResponse, LoginRequest, SignupRequest, User } from '@/lib/api-client';
 
 interface AuthContextType {
   user: User | null;
@@ -41,26 +33,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
-  const pathname = usePathname();
 
+  // Initialize auth state on mount
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       try {
+        // First, try to get user from localStorage for immediate UI update
         const storedUser = apiClient.getUser();
-        const isAuthenticated = apiClient.isAuthenticated();
-        
-        if (storedUser && isAuthenticated) {
+        if (storedUser) {
           setUser(storedUser);
+        }
+
+        // Then verify with backend (this will use httpOnly cookies)
+        const currentUser = await apiClient.getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
         } else {
-          // Clear any partial state
+          // No valid session, clear everything
           setUser(null);
-          localStorage.removeItem('user');
+          apiClient.removeUser();
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
-        localStorage.removeItem('user');
         setUser(null);
+        apiClient.removeUser();
       } finally {
         setIsLoading(false);
       }
@@ -76,23 +72,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = useCallback(async (data: LoginRequest) => {
     try {
       setError(null);
-      setIsLoading(true);
       
       const response = await apiClient.login(data);
-      apiClient.setUser(response.user);
+      
+      // Set user in state
       setUser(response.user);
       
       // Get return URL from current URL params
       const searchParams = new URLSearchParams(window.location.search);
       const returnUrl = searchParams.get('returnUrl') || '/';
       
-      // Use window.location for a full page refresh to ensure cookies are recognized
-      // This also cleans up the URL
-      window.location.href = returnUrl;
+      // Navigate after a small delay to ensure state is saved
+      setTimeout(() => {
+        window.location.href = returnUrl;
+      }, 100);
+      
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Login failed';
       setError(message);
-      setIsLoading(false);
       throw error;
     }
   }, []);
@@ -100,39 +97,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signup = useCallback(async (data: SignupRequest) => {
     try {
       setError(null);
-      setIsLoading(true);
       
       const response = await apiClient.signup(data);
-      apiClient.setUser(response.user);
+      
+      // Set user in state
       setUser(response.user);
       
-      // Use window.location for consistency
-      window.location.href = '/';
+      // Navigate after a small delay to ensure state is saved
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
+      
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Signup failed';
       setError(message);
-      setIsLoading(false);
       throw error;
     }
   }, []);
 
   const logout = useCallback(async () => {
     try {
-      setIsLoading(true);
       
-      // Clear local state immediately
-      setUser(null);
-      localStorage.removeItem('user');
-      
-      // Call logout API to clear httpOnly cookies on server
+      // Call logout API to clear httpOnly cookies
       await apiClient.logout();
+
+      setUser(null);
       
-      // Use window.location for hard navigation to ensure middleware runs
-      window.location.href = '/';
+      // // Redirect to home
+      // window.location.href = '/';
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if API fails, ensure we're logged out locally
-      window.location.href = '/';
+      // // Even if API fails, ensure we're logged out locally
+      window.location.href = '/profile';
     }
   }, []);
 

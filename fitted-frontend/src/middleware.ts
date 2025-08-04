@@ -2,37 +2,39 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const protectedRoutes = ['/upload', '/closet', '/outfit'];
-const authRoutes = ['/login', '/signup'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
-  const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
   
-  const hasAuthCookie = request.cookies.has('accessToken');
-
-  console.log(`Middleware: ${pathname}, hasAuthCookie: ${hasAuthCookie}, isProtected: ${isProtectedRoute}`);
+  if (!isProtectedRoute) {
+    return NextResponse.next();
+  }
   
-  if (isProtectedRoute && !hasAuthCookie) {
-    console.log(`Redirecting to login from ${pathname}`);
+  // For protected routes, check auth cookies
+  const accessToken = request.cookies.get('accessToken');
+  const refreshToken = request.cookies.get('refreshToken');
+  
+  // Check if we have valid auth cookies
+  const hasValidAuth = (accessToken && accessToken.value) || (refreshToken && refreshToken.value);
+  
+  if (!hasValidAuth) {
+    // Create redirect URL
+    console.log("Not valid auth");
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('returnUrl', pathname);
+    
     return NextResponse.redirect(url);
   }
   
-  if (isAuthRoute && hasAuthCookie) {
-    console.log(`Redirecting authenticated user from ${pathname}`);
-    console.log("YES");
-    const returnUrl = request.nextUrl.searchParams.get('returnUrl') || '/';
-    const url = request.nextUrl.clone();
-    url.pathname = returnUrl;
-    url.searchParams.delete('returnUrl');
-    return NextResponse.redirect(url);
-  }
+  // Add headers to prevent caching of protected pages
+  const response = NextResponse.next();
+  response.headers.set('Cache-Control', 'no-store, must-revalidate');
+  response.headers.set('Pragma', 'no-cache');
   
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {

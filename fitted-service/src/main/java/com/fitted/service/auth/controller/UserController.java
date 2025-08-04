@@ -4,6 +4,7 @@ import com.fitted.service.auth.dto.AuthResponse;
 import com.fitted.service.auth.dto.LoginRequest;
 import com.fitted.service.auth.dto.RefreshTokenRequest;
 import com.fitted.service.auth.dto.SignUpRequest;
+import com.fitted.service.auth.model.UserPrincipal;
 import com.fitted.service.auth.service.FittedUserService;
 import com.fitted.service.auth.utils.CookieUtils;
 import jakarta.validation.Valid;
@@ -14,7 +15,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -86,5 +89,21 @@ public class UserController {
                 .build();
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<AuthResponse.UserInfo> getCurrentUser(@AuthenticationPrincipal UserPrincipal userPrincipal) {
+        log.info("Get current user request received");
 
+        if (userPrincipal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        AuthResponse.UserInfo userInfo = AuthResponse.UserInfo.builder()
+                .id(userPrincipal.user().getId().toString())
+                .email(userPrincipal.user().getEmail())
+                .firstName(userPrincipal.user().getFirstName())
+                .lastName(userPrincipal.user().getLastName())
+                .build();
+
+        return ResponseEntity.ok(userInfo);
+    }
 }

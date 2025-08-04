@@ -1,5 +1,3 @@
-import { clientCookies } from './client-cookies';
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface RequestConfig extends RequestInit {
@@ -24,25 +22,6 @@ class ApiClient {
     this.failedQueue = [];
   }
 
-  private getTokens() {
-    return {
-      accessToken: clientCookies.get('accessToken'),
-      refreshToken: clientCookies.get('refreshToken'),
-    };
-  }
-
-  private setTokens(accessToken: string, refreshToken: string) {
-    // localStorage.setItem('accessToken', accessToken);
-    // localStorage.setItem('refreshToken', refreshToken);
-    clientCookies.set('accessToken', accessToken, 7);
-    clientCookies.set('refreshToken', refreshToken, 7);
-  }
-
-  private clearTokens() {
-    clientCookies.remove('accessToken');
-    clientCookies.remove('refreshToken');
-  }
-
   getUser() {
     const userStr = localStorage.getItem('user');
     return userStr ? JSON.parse(userStr) : null;
@@ -56,62 +35,24 @@ class ApiClient {
     localStorage.removeItem('user');
   }
 
-  clearAuth() {
-    this.clearTokens();
-  }
-
-  isAuthenticated() {
-    return !!this.getTokens().accessToken;
-  }
-
-  private async refreshAccessToken(): Promise<{ accessToken: string; refreshToken: string }> {
-    const { refreshToken } = this.getTokens();
-    
-    if (!refreshToken) {
-      throw new Error('No refresh token available');
-    }
-
-    const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      // body: JSON.stringify({ refreshToken }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to refresh token');
-    }
-
-    const data = await response.json();
-    return {
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-    };
-  }
-
   async request<T = any>(endpoint: string, config: RequestConfig = {}): Promise<T> {
     const { skipAuth = false, ...fetchConfig } = config;
-    const { accessToken } = this.getTokens();
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(config.headers as Record<string, string>),
     };
 
-    // if (accessToken && !skipAuth) {
-    //   headers['Authorization'] = `Bearer ${accessToken}`;
-    // }
-
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    let response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...fetchConfig,
-      credentials: 'include',
+      credentials: 'include', // Always send cookies
       headers,
     });
 
-    if (response.status === 401 && !skipAuth) {
+    // Handle 401 errors for token refresh
+    if (response.status === 401 && !skipAuth && !endpoint.includes('/api/auth/')) {
       if (this.isRefreshing) {
+        // Wait for the refresh to complete
         return new Promise((resolve, reject) => {
           this.failedQueue.push({ resolve, reject });
         }).then(() => this.request<T>(endpoint, config));
@@ -120,18 +61,37 @@ class ApiClient {
       this.isRefreshing = true;
 
       try {
-        const { accessToken: newAccessToken, refreshToken: newRefreshToken } = 
-          await this.refreshAccessToken();
-        
-        // this.setTokens(newAccessToken, newRefreshToken);
-        this.processQueue(null);
-        
-        return this.request<T>(endpoint, config);
+        // Try to refresh the token using direct fetch to avoid recursion
+        const refreshResponse = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (refreshResponse.ok) {
+          this.processQueue(null);
+          
+          // Retry the original request
+          response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            ...fetchConfig,
+            credentials: 'include',
+            headers,
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Request failed with status ${response.status}`);
+          }
+        } else {
+          throw new Error('Token refresh failed');
+        }
       } catch (refreshError) {
         this.processQueue(refreshError as Error);
-        this.clearTokens();
+        this.removeUser();
         
-        if (typeof window !== 'undefined') {
+        // Only redirect to login if not on auth endpoints
+        if (typeof window !== 'undefined' && !endpoint.includes('/api/auth/')) {
           window.location.href = '/login';
         }
         
@@ -139,9 +99,7 @@ class ApiClient {
       } finally {
         this.isRefreshing = false;
       }
-    }
-
-    if (!response.ok) {
+    } else if (!response.ok) {
       const errorMessage = await response.text();
       throw new Error(errorMessage || `Request failed with status ${response.status}`);
     }
@@ -174,37 +132,14 @@ class ApiClient {
     return this.request<T>(endpoint, { ...config, method: 'DELETE' });
   }
 
-  async uploadFile<T = any>(endpoint: string, formData: FormData, config?: RequestConfig): Promise<T> {
-    const { accessToken } = this.getTokens();
-    
-    const headers: Record<string, string> = {
-      ...(config?.headers as Record<string, string>),
-    };
-    
-    delete headers['Content-Type'];
-    
-    if (accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
-    }
-
-    return this.request<T>(endpoint, {
-      ...config,
-      method: 'POST',
-      headers,
-      body: formData,
-    });
-  }
-
   async login(data: LoginRequest): Promise<AuthResponse> {
     const response = await this.post<AuthResponse>('/api/auth/login', data, { skipAuth: true });
-    // this.setTokens(response.access_token, response.refresh_token);
     this.setUser(response.user);
     return response;
   }
 
   async signup(data: SignupRequest): Promise<AuthResponse> {
     const response = await this.post<AuthResponse>('/api/auth/signup', data, { skipAuth: true });
-    // this.setTokens(response.access_token, response.refresh_token);
     this.setUser(response.user);
     return response;
   }
@@ -215,23 +150,38 @@ class ApiClient {
     } catch (error) {
       console.error('Logout API call failed:', error);
     } finally {
-      this.clearAuth();
+      this.removeUser();
+    }
+  }
+
+  async getCurrentUser(): Promise<User | null> {
+    try {
+      const user = await this.get<User>('/api/auth/me');
+      this.setUser(user);
+      return user;
+    } catch (error) {
+      console.log('getCurrentUser failed, likely not authenticated');
+      this.removeUser();
+      return null;
     }
   }
 }
 
 export const apiClient = new ApiClient();
 
+// Types
+export interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
 export interface AuthResponse {
   access_token: string;
   refresh_token: string;
   token_type: string;
-  user: {
-    id: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-  };
+  user: User;
 }
 
 export interface LoginRequest {

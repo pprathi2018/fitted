@@ -18,14 +18,15 @@ const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { signup, error, clearError, isAuthenticated } = useAuth();
+  const { signup, error, clearError, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (isAuthenticated) {
+    // If user is authenticated and we're not loading, redirect
+    if (!isLoading && isAuthenticated) {
       router.push('/');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isLoading, router]);
 
   useEffect(() => {
     if (error) {
@@ -49,6 +50,7 @@ const SignUp = () => {
     try {
       setIsSubmitting(true);
       await signup(formData);
+      // Navigation happens in AuthContext via window.location
     } catch (error) {
       console.error('Signup failed:', error);
     } finally {
@@ -60,6 +62,32 @@ const SignUp = () => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
+
+  // Show loading spinner while checking auth state
+  if (isLoading) {
+    return (
+      <div className="signup-container">
+        <div className="signup-form-card">
+          <div className="flex justify-center items-center py-8">
+            <div className="spinner"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If already authenticated, show redirect message
+  if (isAuthenticated) {
+    return (
+      <div className="signup-container">
+        <div className="signup-form-card">
+          <div className="text-center py-8">
+            <p className="text-gray-600">You are already logged in. Redirecting...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="signup-container">
