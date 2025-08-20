@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface ClothingItemRepository extends JpaRepository<ClothingItem, UUID> {
 //    Optional<ClothingItem> findById(UUID clothingItemId);
+    Optional<ClothingItem> findByIdAndUserId(UUID id, UUID userId);
 }

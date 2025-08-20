@@ -61,11 +61,12 @@ public class ClothingItemController {
 
     @GetMapping(value = "/clothing-items")
     public ResponseEntity<ClothingItemResponse> getClothingItem(
-            @RequestParam(name = "clothingItemId") String clothingItemId
+            @RequestParam(name = "clothingItemId") String clothingItemId,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
         log.info("Received GetClothingItem request: clothingItemId={}", clothingItemId);
 
-        ClothingItemResponse response = clothingItemService.getClothingItem(clothingItemId);
+        ClothingItemResponse response = clothingItemService.getClothingItem(clothingItemId, userPrincipal.user().getId());
 
         log.info("Successfully retrieved clothing item with name: {}, id: {}", response.getName(), response.getId());
 
@@ -74,11 +75,12 @@ public class ClothingItemController {
 
     @DeleteMapping(value = "/clothing-items")
     public ResponseEntity<Void> deleteClothingItem(
-            @RequestParam(name = "clothingItemId") String clothingItemId
+            @RequestParam(name = "clothingItemId") String clothingItemId,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
         log.info("Received DeleteClothingItem request: clothingItemId={}", clothingItemId);
 
-        clothingItemService.deleteClothingItem(clothingItemId);
+        clothingItemService.deleteClothingItem(clothingItemId, userPrincipal.user().getId());
 
         log.info("Successfully deleted clothing item with id: {}", clothingItemId);
 

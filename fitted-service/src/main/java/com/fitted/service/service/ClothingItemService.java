@@ -11,10 +11,12 @@ import com.fitted.service.model.ClothingItem;
 import com.fitted.service.repository.ClothingItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.apache.tika.Tika;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -41,6 +43,8 @@ public class ClothingItemService {
     @Transactional
     public ClothingItemResponse saveClothingItem(CreateClothingItemRequest request) {
         log.info("Started save clothing item request: name={}, user={}", request.getName(), request.getUser().getId());
+        String originalItemS3Url = null;
+        String modifiedItemS3Url = null;
         try {
             MultipartFile originalImageFile = validateFile(request.getOriginalImageFile());
             MultipartFile modifiedImageFile = validateFile(request.getModifiedImageFile());
@@ -48,8 +52,6 @@ public class ClothingItemService {
             UUID clothingItemId = UUID.randomUUID();
             String userId = request.getUser().getId().toString();
 
-            String originalItemS3Url = null;
-            String modifiedItemS3Url = null;
             ClothingItem saved;
             try {
                 log.info("Attempting to save original image to S3: {}", originalImageFile.getOriginalFilename());
@@ -97,13 +99,14 @@ public class ClothingItemService {
             throw new InternalServerException("Internal server error while uploading image to S3", e);
         } catch (Exception e) {
             log.error("Unexpected error during clothing item save", e);
+            cleanupS3(originalItemS3Url, modifiedItemS3Url);
             throw new InternalServerException("Failed to save clothing item", e);
         }
     }
 
-    public ClothingItemResponse getClothingItem(String clothingItemId) {
+    public ClothingItemResponse getClothingItem(String clothingItemId, UUID userId) {
         log.info("Started get clothing item request: clothingItemId={}", clothingItemId);
-        ClothingItem clothingItem = clothingItemRepository.findById(UUID.fromString(clothingItemId)).orElseThrow(
+        ClothingItem clothingItem = clothingItemRepository.findByIdAndUserId(UUID.fromString(clothingItemId), userId).orElseThrow(
                 () -> new ResourceNotFoundException(String.format("Clothing item with id: %s not found.", clothingItemId))
         );
 
@@ -120,10 +123,10 @@ public class ClothingItemService {
     }
 
     @Transactional
-    public void deleteClothingItem(String clothingItemId) {
+    public void deleteClothingItem(String clothingItemId, UUID userId) {
         log.info("Started delete clothing item request: clothingItemId={}", clothingItemId);
 
-        ClothingItem clothingItem = clothingItemRepository.findById(UUID.fromString(clothingItemId))
+        ClothingItem clothingItem = clothingItemRepository.findByIdAndUserId(UUID.fromString(clothingItemId), userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format("Clothing item with id: %s not found.", clothingItemId)));
 
@@ -156,7 +159,7 @@ public class ClothingItemService {
         }
 
         String contentType = file.getContentType();
-        if (Objects.isNull(contentType) || !ALLOWED_IMAGE_TYPES.contains(contentType.toLowerCase())) {
+        if (Objects.isNull(contentType) || !isValidFileType(file)) {
             throw new ValidationException(
                     String.format("Invalid file type: %s. Allowed types are: JPEG, PNG, WebP", contentType)
             );
@@ -168,6 +171,17 @@ public class ClothingItemService {
         }
 
         return file;
+    }
+
+    private boolean isValidFileType(MultipartFile file) {
+        try {
+            Tika tika = new Tika();
+            String detectedType = tika.detect(file.getInputStream());
+            return ALLOWED_IMAGE_TYPES.contains(detectedType);
+        } catch (IOException e) {
+            log.error("Failed to detect file type", e);
+            return false;
+        }
     }
 
     private String getFileKey(String userId, String id, String imageType, String extension) {

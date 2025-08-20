@@ -10,14 +10,15 @@ class ApiClient {
   private failedQueue: Array<{
     resolve: (value: any) => void;
     reject: (error: any) => void;
+    request: () => Promise<any>;
   }> = [];
 
   private processQueue(error: Error | null) {
-    this.failedQueue.forEach(promise => {
+    this.failedQueue.forEach(prom => {
       if (error) {
-        promise.reject(error);
+        prom.reject(error);
       } else {
-        promise.resolve(undefined);
+        prom.request().then(prom.resolve).catch(prom.reject);
       }
     });
     this.failedQueue = [];
@@ -37,16 +38,20 @@ class ApiClient {
 
     let response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...fetchConfig,
-      credentials: 'include', // send cookies
+      credentials: 'include',
       headers,
     });
 
-    // refresh token on 401 errors
+    // Handle 401 errors
     if (response.status === 401 && !skipAuth) {
       if (this.isRefreshing) {
         return new Promise((resolve, reject) => {
-          this.failedQueue.push({ resolve, reject });
-        }).then(() => this.request<T>(endpoint, config));
+          this.failedQueue.push({ 
+            resolve, 
+            reject,
+            request: () => this.request<T>(endpoint, config)
+          });
+        });
       }
 
       this.isRefreshing = true;
@@ -63,7 +68,7 @@ class ApiClient {
         if (refreshResponse.ok) {
           this.processQueue(null);
           
-          // retry original request
+          // Retry original request
           response = await fetch(`${API_BASE_URL}${endpoint}`, {
             ...fetchConfig,
             credentials: 'include',
@@ -80,7 +85,6 @@ class ApiClient {
         this.processQueue(refreshError as Error);
         this.removeUserFromLocal();
         
-        // redirect to login
         if (typeof window !== 'undefined' && !endpoint.includes('/api/auth/')) {
           window.location.href = '/login';
         }
