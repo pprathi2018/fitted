@@ -3,7 +3,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiClient, LoginRequest, SignupRequest, User } from '@/lib/api-client';
+import { authApiClient } from '@/lib/auth-api-client';
+import { LoginRequest, SignupRequest, User } from '@/lib/auth-api-client';
 
 interface AuthContextType {
   user: User | null;
@@ -14,6 +15,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   error: string | null;
   clearError: () => void;
+  clearUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,11 +40,10 @@ const AuthProviderWithRouter: React.FC<AuthProviderProps> = ({ children }) => {
 
   let authInitialized = false;
 
-  // Inside AuthProvider
   useEffect(() => {
     const initializeAuth = async () => {
       if (authInitialized) {
-        const storedUser = apiClient.getUser();
+        const storedUser = authApiClient.getUserFromLocal();
         if (storedUser) {
           setUser(storedUser);
           setIsLoading(false);
@@ -52,19 +53,19 @@ const AuthProviderWithRouter: React.FC<AuthProviderProps> = ({ children }) => {
 
       try {
         setIsLoading(true);
-        const currentUser = await apiClient.getCurrentUser();
+        const currentUser = await authApiClient.getCurrentUser();
         if (currentUser) {
           setUser(currentUser);
-          apiClient.setUser(currentUser);
+          authApiClient.setUserInLocal(currentUser);
           authInitialized = true;
         } else {
           setUser(null);
-          apiClient.removeUser();
+          authApiClient.removeUserFromLocal();
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
         setUser(null);
-        apiClient.removeUser();
+        authApiClient.removeUserFromLocal();
       } finally {
         setIsLoading(false);
       }
@@ -77,13 +78,18 @@ const AuthProviderWithRouter: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
   }, []);
 
+  const clearUser = useCallback(() => {
+    setUser(null);
+  }, []);
+
   const login = useCallback(async (data: LoginRequest) => {
     try {
       setError(null);
       
-      const response = await apiClient.login(data);
+      const response = await authApiClient.login(data);
       
       setUser(response.user);
+      authApiClient.setUserInLocal(response.user);
 
       setTimeout(() => {
         window.location.href = '/';
@@ -100,9 +106,10 @@ const AuthProviderWithRouter: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setError(null);
       
-      const response = await apiClient.signup(data);
+      const response = await authApiClient.signup(data);
       
       setUser(response.user);
+      authApiClient.setUserInLocal(response.user);
       
       setTimeout(() => {
         window.location.href = '/';
@@ -117,14 +124,14 @@ const AuthProviderWithRouter: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = useCallback(async () => {
     try {
-      await apiClient.logout();
-      setUser(null);
+      await authApiClient.logout();
       router.refresh();
     } catch (error) {
       console.error('Logout error:', error);
-      setUser(null);
-      apiClient.removeUser();
       router.refresh();
+    } finally {
+      setUser(null);
+      authApiClient.removeUserFromLocal()
     }
   }, [router]);
 
@@ -137,6 +144,7 @@ const AuthProviderWithRouter: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     error,
     clearError,
+    clearUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

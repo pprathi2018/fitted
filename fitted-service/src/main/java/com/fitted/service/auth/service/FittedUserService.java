@@ -43,6 +43,8 @@ public class FittedUserService {
     private JwtProperties jwtProperties;
     @Autowired
     private AuthenticationManager authenticationManager;
+    @Autowired
+    private UserCacheService userCacheService;
 
     @Transactional
     public AuthResponse signup(SignUpRequest request) {
@@ -108,6 +110,10 @@ public class FittedUserService {
         refreshTokenRepository.findByTokenHash(tokenHash).ifPresent(token -> {
             token.setRevoked(true);
             refreshTokenRepository.save(token);
+
+            Users user = token.getUser();
+            userCacheService.evictUserCache(user.getId(), user.getEmail());
+
             log.info("Revoked refresh token for user");
         });
     }

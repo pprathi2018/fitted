@@ -110,6 +110,43 @@ public class S3FileUploadService {
         }
     }
 
+    public void deleteFile(String s3Url) {
+        try {
+            String bucketName = awsProperties.getS3().getBucketName();
+            String key = extractKeyFromS3Url(s3Url);
+
+            if (key == null) {
+                log.warn("Invalid S3 URL format, cannot delete: {}", s3Url);
+                return;
+            }
+
+            DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build();
+
+            s3Client.deleteObject(deleteRequest);
+            log.info("Successfully deleted file from S3: {}", key);
+        } catch (Exception e) {
+            log.error("Failed to delete file from S3: {}", s3Url, e);
+            throw new S3FileUploadServerException("Failed to delete file from S3", e);
+        }
+    }
+
+    private String extractKeyFromS3Url(String s3Url) {
+        if (s3Url == null || !s3Url.startsWith("s3://")) {
+            return null;
+        }
+
+        String withoutProtocol = s3Url.substring(5); // Remove "s3://"
+        int firstSlash = withoutProtocol.indexOf('/');
+        if (firstSlash == -1) {
+            return null;
+        }
+
+        return withoutProtocol.substring(firstSlash + 1);
+    }
+
     private void abortMultiPartUpload(String bucketName, String key, String uploadId) {
         try {
             log.warn("Starting to abort multi part upload with id: {}", uploadId);

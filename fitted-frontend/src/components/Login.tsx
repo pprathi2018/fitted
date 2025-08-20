@@ -1,22 +1,34 @@
-// src/components/Login.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { authApiClient } from '@/lib/auth-api-client';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, error, clearError, isAuthenticated, isLoading } = useAuth();
+  const { login, error, clearError, clearUser, isAuthenticated, isLoading } = useAuth();
+
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathName = usePathname();
 
   useEffect(() => {
-    // If user is authenticated and we're not loading, redirect immediately
+    const params = new URLSearchParams(searchParams.toString());
+    if (params.has("reDirect") && params.get("reDirect") == "true") {
+      authApiClient.removeUserFromLocal();
+      clearUser();
+      params.delete("reDirect");
+      router.replace(`${pathName}?${params.toString()}`);
+    }
+  }, [searchParams, pathName, router])
+
+  useEffect(() => {
     if (!isLoading && isAuthenticated) {
       router.push('/');
     }
@@ -34,7 +46,6 @@ const Login = () => {
     try {
       setIsSubmitting(true);
       await login({ email, password });
-      // Navigation happens in AuthContext via window.location
     } catch (error) {
       console.error('Login failed:', error);
     } finally {
@@ -42,7 +53,6 @@ const Login = () => {
     }
   };
 
-  // Show loading spinner while checking auth state
   if (isLoading) {
     return (
       <div className="login-container">
@@ -55,7 +65,6 @@ const Login = () => {
     );
   }
 
-  // If already authenticated, don't show anything (redirect will happen via useEffect)
   if (isAuthenticated) {
     return null;
   }

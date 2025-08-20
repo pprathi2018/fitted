@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -29,6 +31,13 @@ public class ClothingItemService {
     private final static String ORIGINAL_IMAGE_TYPE = "original";
     private final static String MODIFIED_IMAGE_TYPE = "modified";
 
+    private static final List<String> ALLOWED_IMAGE_TYPES = Arrays.asList(
+            "image/jpeg",
+            "image/jpg",
+            "image/png",
+            "image/webp"
+    );
+
     @Transactional
     public ClothingItemResponse saveClothingItem(CreateClothingItemRequest request) {
         log.info("Started save clothing item request: name={}, user={}", request.getName(), request.getUser().getId());
@@ -39,30 +48,38 @@ public class ClothingItemService {
             UUID clothingItemId = UUID.randomUUID();
             String userId = request.getUser().getId().toString();
 
-            log.info("Attempting to save original image to S3: {}", originalImageFile.getOriginalFilename());
-            String originalItemKey = getFileKey(userId, clothingItemId.toString(), ORIGINAL_IMAGE_TYPE,
-                    getFileExtension(originalImageFile.getOriginalFilename()));
-            String originalItemS3Url = s3FileUploadService.uploadImageFileSimple(originalImageFile, originalItemKey);
-            log.info("Saved original image to S3: {}", originalItemS3Url);
+            String originalItemS3Url = null;
+            String modifiedItemS3Url = null;
+            ClothingItem saved;
+            try {
+                log.info("Attempting to save original image to S3: {}", originalImageFile.getOriginalFilename());
+                String originalItemKey = getFileKey(userId, clothingItemId.toString(), ORIGINAL_IMAGE_TYPE,
+                        getFileExtension(originalImageFile.getOriginalFilename()));
+                originalItemS3Url = s3FileUploadService.uploadImageFileSimple(originalImageFile, originalItemKey);
+                log.info("Saved original image to S3: {}", originalItemS3Url);
 
-            log.info("Attempting to save modified image to S3: {}", modifiedImageFile.getOriginalFilename());
-            String modifiedItemKey = getFileKey(userId, clothingItemId.toString(), MODIFIED_IMAGE_TYPE,
-                    getFileExtension(modifiedImageFile.getOriginalFilename()));
-            String modifiedItemS3Url = s3FileUploadService.uploadImageFileSimple(modifiedImageFile, modifiedItemKey);
-            log.info("Saved modified image to S3: {}", modifiedItemS3Url);
+                log.info("Attempting to save modified image to S3: {}", modifiedImageFile.getOriginalFilename());
+                String modifiedItemKey = getFileKey(userId, clothingItemId.toString(), MODIFIED_IMAGE_TYPE,
+                        getFileExtension(modifiedImageFile.getOriginalFilename()));
+                modifiedItemS3Url = s3FileUploadService.uploadImageFileSimple(modifiedImageFile, modifiedItemKey);
+                log.info("Saved modified image to S3: {}", modifiedItemS3Url);
 
-            log.info("Attempting to save clothing item to database: name={}", request.getName());
-            ClothingItem clothingItem = ClothingItem.builder()
-                    .id(clothingItemId)
-                    .name(request.getName())
-                    .type(request.getType())
-                    .originalImageUrl(originalItemS3Url)
-                    .modifiedImageUrl(modifiedItemS3Url)
-                    .color(request.getColor())
-                    .user(request.getUser())
-                    .build();
-            ClothingItem saved = clothingItemRepository.save(clothingItem);
-            log.info("Save clothing item was successful");
+                log.info("Attempting to save clothing item to database: name={}", request.getName());
+                ClothingItem clothingItem = ClothingItem.builder()
+                        .id(clothingItemId)
+                        .name(request.getName())
+                        .type(request.getType())
+                        .originalImageUrl(originalItemS3Url)
+                        .modifiedImageUrl(modifiedItemS3Url)
+                        .color(request.getColor())
+                        .user(request.getUser())
+                        .build();
+                saved = clothingItemRepository.save(clothingItem);
+                log.info("Save clothing item was successful");
+            } catch (Exception e) {
+                cleanupS3(originalItemS3Url, modifiedItemS3Url);
+                throw e;
+            }
 
             return ClothingItemResponse.builder()
                     .id(saved.getId())
@@ -78,6 +95,9 @@ public class ClothingItemService {
             throw new ValidationException(e.getMessage(), e);
         } catch (S3FileUploadServerException e) {
             throw new InternalServerException("Internal server error while uploading image to S3", e);
+        } catch (Exception e) {
+            log.error("Unexpected error during clothing item save", e);
+            throw new InternalServerException("Failed to save clothing item", e);
         }
     }
 
@@ -99,15 +119,54 @@ public class ClothingItemService {
                 .build();
     }
 
+    @Transactional
     public void deleteClothingItem(String clothingItemId) {
         log.info("Started delete clothing item request: clothingItemId={}", clothingItemId);
+
+        ClothingItem clothingItem = clothingItemRepository.findById(UUID.fromString(clothingItemId))
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        String.format("Clothing item with id: %s not found.", clothingItemId)));
+
         clothingItemRepository.deleteById(UUID.fromString(clothingItemId));
+
+        cleanupS3(clothingItem.getOriginalImageUrl(), clothingItem.getModifiedImageUrl());
+    }
+
+    private void cleanupS3(String originalItemS3Url, String modifiedItemS3Url) {
+        if (originalItemS3Url != null) {
+            try {
+                s3FileUploadService.deleteFile(originalItemS3Url);
+            } catch (Exception cleanupEx) {
+                log.error("Failed to cleanup original image from S3", cleanupEx);
+            }
+        }
+
+        if (modifiedItemS3Url != null) {
+            try {
+                s3FileUploadService.deleteFile(modifiedItemS3Url);
+            } catch (Exception cleanupEx) {
+                log.error("Failed to cleanup modified image from S3", cleanupEx);
+            }
+        }
     }
 
     private MultipartFile validateFile(MultipartFile file) {
-        if (Objects.isNull(file) || Objects.isNull(file.getContentType()) || !file.getContentType().contains("image")) {
-            throw new ValidationException("File input is invalid.");
+        if (Objects.isNull(file) || file.isEmpty()) {
+            throw new ValidationException("File input is missing or empty.");
         }
+
+        String contentType = file.getContentType();
+        if (Objects.isNull(contentType) || !ALLOWED_IMAGE_TYPES.contains(contentType.toLowerCase())) {
+            throw new ValidationException(
+                    String.format("Invalid file type: %s. Allowed types are: JPEG, PNG, WebP", contentType)
+            );
+        }
+
+        long maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.getSize() > maxSize) {
+            throw new ValidationException("File size exceeds maximum allowed size of 10MB");
+        }
+
         return file;
     }
 

@@ -1,4 +1,3 @@
-// src/components/Signup.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -22,7 +21,6 @@ const SignUp = () => {
   const router = useRouter();
 
   useEffect(() => {
-    // If user is authenticated and we're not loading, redirect immediately
     if (!isLoading && isAuthenticated) {
       router.push('/');
     }
@@ -50,7 +48,6 @@ const SignUp = () => {
     try {
       setIsSubmitting(true);
       await signup(formData);
-      // Navigation happens in AuthContext via window.location
     } catch (error) {
       console.error('Signup failed:', error);
     } finally {
@@ -63,7 +60,6 @@ const SignUp = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Show loading spinner while checking auth state
   if (isLoading) {
     return (
       <div className="signup-container">
@@ -76,7 +72,6 @@ const SignUp = () => {
     );
   }
 
-  // If already authenticated, don't show anything (redirect will happen via useEffect)
   if (isAuthenticated) {
     return null;
   }

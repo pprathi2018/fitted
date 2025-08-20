@@ -5,6 +5,7 @@ import com.fitted.service.auth.model.Users;
 import com.fitted.service.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -23,6 +24,7 @@ public class FittedUserDetailsService implements UserDetailsService {
 
     @Override
     @Transactional
+    @Cacheable(value = "userDetails", key = "#username")
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         Optional<Users> user = repository.findByEmailIgnoreCase(username);
         if (user.isEmpty()) {
@@ -32,6 +34,7 @@ public class FittedUserDetailsService implements UserDetailsService {
     }
 
     @Transactional
+    @Cacheable(value = "users", key = "#id.toString()")
     public UserDetails loadUserById(UUID id) {
         Optional<Users> user = repository.findById(id);
         if (user.isEmpty()) {

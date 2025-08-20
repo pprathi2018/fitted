@@ -22,11 +22,11 @@ export function middleware(request: NextRequest) {
     console.log("No valid auth tokens found");
     const url = request.nextUrl.clone();
     url.pathname = '/login';
+    url.searchParams.set('reDirect', 'true')
     
     return NextResponse.redirect(url);
   }
-  
-  // Add headers to prevent caching of protected pages
+
   const response = NextResponse.next();
   
   return response;
