@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { User } from '@/lib/auth/types';
 import { API_ENDPOINTS } from '@/lib/auth/constants';
+import { authApi } from '../api/auth-api-client';
 
 export async function getServerAuth(): Promise<{
   user: User | null;
@@ -24,12 +25,15 @@ export async function getServerAuth(): Promise<{
 
     if (response.ok) {
       const user = await response.json();
+      authApi.storeUser(user);
       return { user, isAuthenticated: true };
     }
 
+    authApi.clearUser();
     return { user: null, isAuthenticated: false };
   } catch (error) {
     console.error('Server auth check failed:', error);
+    authApi.clearUser();
     return { user: null, isAuthenticated: false };
   }
 }

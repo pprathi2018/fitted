@@ -13,6 +13,7 @@ interface AuthStore extends AuthState {
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   initializeAuth: () => Promise<void>;
+  clearAuth: (errorMessage: string | null, isInitialized?: boolean) => Promise<void>;
   clearError: () => void;
   setUser: (user: User | null) => void;
 }
@@ -45,12 +46,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         window.location.href = '/';
       }
     } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : 'Login failed',
-        isLoading: false,
-        isAuthenticated: false,
-        user: null,
-      });
+      await get().clearAuth(error instanceof Error ? error.message : 'Login failed');
       throw error;
     }
   },
@@ -76,12 +72,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         window.location.href = '/';
       }
     } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : 'Signup failed',
-        isLoading: false,
-        isAuthenticated: false,
-        user: null,
-      });
+      await get().clearAuth(error instanceof Error ? error.message : 'Signup failed', true);
       throw error;
     }
   },
@@ -94,21 +85,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     } catch (error) {
       console.error('Logout API call failed:', error);
     } finally {
-      authApi.clearUser();
-      set({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        isInitialized: true,
-        error: null,
-      });
-      
+      await get().clearAuth(null, true);
       window.location.href = '/';
     }
   },
 
   checkAuth: async () => {
-    if (get().isLoading || get().isInitialized) return;
+    if (get().isLoading) return;
     
     set({ isLoading: true });
     
@@ -123,21 +106,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           isInitialized: true,
         });
       } else {
-        set({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-          isInitialized: true,
-        });
+        await get().clearAuth(null, true);
       }
     } catch (error) {
-      set({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        isInitialized: true,
-        error: null,
-      });
+      await get().clearAuth(null, true);
     }
   },
 
@@ -192,23 +164,24 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             isInitialized: true,
           });
         } else {
-          set({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-            isInitialized: true,
-          });
+          await get().clearAuth(null, true);
         }
       } catch (error) {
         console.error('initializeAuth: Failed to fetch user:', error);
-        set({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-          isInitialized: true,
-        });
+        await get().clearAuth(null, true);
       }
     }
+  },
+
+  clearAuth: async (errorMessage: string | null, isInitialized?: boolean) => {
+    authApi.clearUser();
+    set({
+      error: errorMessage,
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      isInitialized: isInitialized ?? false,
+    });
   },
 
   clearError: () => {
