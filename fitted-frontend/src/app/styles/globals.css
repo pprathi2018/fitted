@@ -133,3 +133,5 @@ h1 {
 @import './components/login.css';
 @import './components/signup.css';
 @import './components/profile.css';
+@import './components/global-loader.css';
+@import './components/loading.css';

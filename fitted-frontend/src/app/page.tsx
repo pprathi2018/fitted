@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import { Upload, Palette, Shirt } from 'lucide-react';
 import image from './closet-image.png';
+import { useAuthStore } from '@/lib/stores/auth-store';
 
 export default function Home() {
+  const { user, isAuthenticated } = useAuthStore();
 
   return (
     <main className="min-h-screen bg-fitted-blue flex items-center justify-center">
@@ -20,6 +22,11 @@ export default function Home() {
         
         <div className="content-wrapper">
           <h1 className="fitted-title">Fitted</h1>
+          {isAuthenticated && user && (
+            <p className="welcome-message">
+              Welcome back, {user.firstName}!
+            </p>
+          )}
           <p className="fitted-tagline">Your Virtual Wardrobe, Styled to Perfection</p>
           
           <div className="button-container">

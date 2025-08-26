@@ -1,0 +1,214 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Mail, Lock, User, AlertCircle, Eye, EyeOff, Check } from 'lucide-react';
+import { useAuthStore } from '@/lib/stores/auth-store';
+
+export default function SignupForm() {
+  const [formData, setFormData] = useState({
+    email: '',
+    firstName: '',
+    lastName: '',
+    password: '',
+    passwordConfirmation: ''
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
+  
+  const { signup, isLoading, error, clearError } = useAuthStore();
+
+  // Clear error when inputs change
+  useEffect(() => {
+    if (error) {
+      clearError();
+    }
+  }, [formData]);
+
+  const passwordsMatch = formData.password && formData.passwordConfirmation && 
+    formData.password === formData.passwordConfirmation;
+
+  const passwordsDontMatch = formData.password && formData.passwordConfirmation && 
+    formData.password !== formData.passwordConfirmation;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!passwordsMatch) {
+      return;
+    }
+
+    try {
+      await signup(formData);
+    } catch (error) {
+      console.error('Signup failed:', error);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  return (
+    <>
+      {error && (
+        <div className="error-alert">
+          <AlertCircle className="error-icon" />
+          <p className="error-text">{error}</p>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="signup-form">
+        <div className="name-fields-row">
+          <div className="form-field">
+            <label htmlFor="firstName" className="form-label">
+              First Name
+            </label>
+            <div className="input-wrapper">
+              <User className="input-icon" />
+              <input
+                id="firstName"
+                name="firstName"
+                type="text"
+                value={formData.firstName}
+                onChange={handleChange}
+                className="form-input with-icon"
+                required
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+
+          <div className="form-field">
+            <label htmlFor="lastName" className="form-label">
+              Last Name
+            </label>
+            <div className="input-wrapper">
+              <User className="input-icon" />
+              <input
+                id="lastName"
+                name="lastName"
+                type="text"
+                value={formData.lastName}
+                onChange={handleChange}
+                className="form-input with-icon"
+                required
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="email" className="form-label">
+            Email
+          </label>
+          <div className="input-wrapper">
+            <Mail className="input-icon" />
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="form-input with-icon"
+              required
+              autoComplete="email"
+              disabled={isLoading}
+            />
+          </div>
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="password" className="form-label">
+            Password
+          </label>
+          <div className="input-wrapper">
+            <Lock className="input-icon" />
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              value={formData.password}
+              onChange={handleChange}
+              className="form-input with-icon with-toggle"
+              required
+              autoComplete="new-password"
+              minLength={8}
+              disabled={isLoading}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="password-toggle"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              disabled={isLoading}
+            >
+              {showPassword ? (
+                <EyeOff className="toggle-icon" />
+              ) : (
+                <Eye className="toggle-icon" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="passwordConfirmation" className="form-label">
+            Confirm Password
+          </label>
+          <div className="input-wrapper">
+            <Lock className="input-icon" />
+            <input
+              id="passwordConfirmation"
+              name="passwordConfirmation"
+              type={showPasswordConfirmation ? 'text' : 'password'}
+              value={formData.passwordConfirmation}
+              onChange={handleChange}
+              className={`form-input with-icon with-toggle ${passwordsDontMatch ? 'error' : ''}`}
+              required
+              autoComplete="new-password"
+              disabled={isLoading}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPasswordConfirmation(!showPasswordConfirmation)}
+              className="password-toggle"
+              aria-label={showPasswordConfirmation ? 'Hide password' : 'Show password'}
+              disabled={isLoading}
+            >
+              {showPasswordConfirmation ? (
+                <EyeOff className="toggle-icon" />
+              ) : (
+                <Eye className="toggle-icon" />
+              )}
+            </button>
+          </div>
+          {passwordsMatch && (
+            <p className="field-success">
+              <Check className="success-icon" /> Passwords match
+            </p>
+          )}
+          {passwordsDontMatch && (
+            <p className="field-error">Passwords do not match</p>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          disabled={isLoading || !passwordsMatch}
+          className="submit-button"
+        >
+          {isLoading ? (
+            <span className="button-loading">
+              <span className="spinner"></span>
+              Creating account...
+            </span>
+          ) : (
+            'Create Account'
+          )}
+        </button>
+      </form>
+    </>
+  );
+}

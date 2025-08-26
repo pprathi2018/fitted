@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Upload, Shirt, Palette, User } from 'lucide-react';
 
-const Navigation = () => {
+export default function Navigation() {
   const pathname = usePathname();
 
   const navItems = [
@@ -18,7 +18,9 @@ const Navigation = () => {
     <nav className="navigation">
       <div className="nav-container">
         <div className="nav-left">
-          <p className="nav-brand">Fitted</p>
+          <Link href="/" className="nav-brand">
+            Fitted
+          </Link>
           
           <div className="nav-center">
             {navItems.map(({ href, icon: Icon, label }) => (
@@ -46,6 +48,4 @@ const Navigation = () => {
       </div>
     </nav>
   );
-};
-
-export default Navigation;
+}

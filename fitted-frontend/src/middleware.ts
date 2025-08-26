@@ -1,35 +1,38 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const protectedRoutes = ['/upload', '/closet', '/outfit'];
+const PUBLIC_ROUTES = ['/'];
+const AUTH_ROUTES = ['/login', '/signup'];
+const PROTECTED_ROUTES = ['/closet', '/outfit', '/upload'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+  const refreshToken = request.cookies.get('refreshToken');
+
+  const hasValidAuth = !!refreshToken?.value;
   
-  if (!isProtectedRoute) {
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+  const isAuthRoute = AUTH_ROUTES.some(route => pathname.startsWith(route));
+  const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
+  
+  if (isPublicRoute) {
     return NextResponse.next();
   }
   
-  const accessToken = request.cookies.get('accessToken');
-  const refreshToken = request.cookies.get('refreshToken');
-  
-  const hasAccessToken = accessToken && accessToken.value && accessToken.value.length > 0;
-  const hasRefreshToken = refreshToken && refreshToken.value && refreshToken.value.length > 0;
-  
-  if (!hasAccessToken || !hasRefreshToken) {
-    console.log("No valid auth tokens found");
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    url.searchParams.set('reDirect', 'true')
-    
-    return NextResponse.redirect(url);
+  if (isAuthRoute && hasValidAuth) {
+    return NextResponse.redirect(new URL('/', request.url));
   }
-
-  const response = NextResponse.next();
   
-  return response;
+  if (isProtectedRoute && !hasValidAuth) {
+    const loginUrl = new URL('/login', request.url);
+    
+    loginUrl.searchParams.set('returnUrl', pathname);
+    
+    return NextResponse.redirect(loginUrl);
+  }
+  
+  return NextResponse.next();
 }
 
 export const config = {
