@@ -1,7 +1,8 @@
 'use client';
 
-import { useDrag } from 'react-dnd';
+import { useDraggable } from '@dnd-kit/core';
 import { ClothingItem as ClothingItemType } from '@/types/clothing';
+import { cn } from '@/lib/utils';
 
 interface ClothingItemSidePanelProps {
   item: ClothingItemType;
@@ -9,34 +10,29 @@ interface ClothingItemSidePanelProps {
 }
 
 const ClothingItemSidePanel = ({ item, inOutfit = false }: ClothingItemSidePanelProps) => {
-  const [{ isDragging }, dragRef] = useDrag(() => ({
-    type: 'clothing-item',
-    item: { 
-      ...item, 
-      fromCanvas: false
-    },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  }));
+  const {attributes, listeners, setNodeRef, isDragging} = useDraggable({
+    id: item.id,
+    disabled: inOutfit,
+  });
 
   return (
     <div
-      ref={inOutfit ? null : dragRef as any}
-      className={`clothing-item ${isDragging ? 'dragging' : ''} sidebar-item ${inOutfit ? 'in-outfit' : ''}`}
+      ref={setNodeRef}
+      {...(!inOutfit ? listeners : {})}
+      {...(!inOutfit ? attributes : {})}
+      className={cn(
+        "w-32 h-40 bg-white rounded-lg border-2 transition-all shrink-0",
+        inOutfit ? "opacity-50 cursor-not-allowed border-fitted-gray-200" : "cursor-move hover:border-fitted-blue-sky border-transparent",
+        isDragging && "opacity-30 border-fitted-blue-accent"
+      )}
     >
-      <div className="clothing-item-content">
-        <div className="clothing-item-image-container">
-          <img
-            src={item.image}
-            alt={item.name}
-            className={inOutfit ? 'clothing-item-image-in-outfit' : 'clothing-item-image'}
-            draggable={false}
-          />
-        </div>
-        <div className="clothing-item-info">
-          <p className="clothing-item-name">{item.name}</p>
-        </div>
+      <div className="h-full flex items-center justify-center">
+        <img
+          src={item.image}
+          alt={item.name}
+          className={cn("max-w-full max-h-full object-contain", inOutfit && "opacity-50")}
+          draggable={false}
+        />
       </div>
     </div>
   );

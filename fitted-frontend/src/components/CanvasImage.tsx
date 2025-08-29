@@ -3,6 +3,7 @@
 import React from 'react';
 import { Rnd } from 'react-rnd';
 import { ClothingItem as ClothingItemType } from '@/types/clothing';
+import { cn } from '@/lib/utils';
 
 interface CanvasImageProps {
   item: ClothingItemType;
@@ -71,13 +72,16 @@ const CanvasImage = ({
         topLeft: true
       }}
       style={{ zIndex }}
-      className={`rnd-item ${isSelected ? 'rnd-item-selected' : ''}`}
+      className={cn(
+        "group cursor-move border-[3px] rounded-md transition-colors",
+        isSelected ? "border-fitted-blue-accent" : "border-transparent hover:border-blue-200"
+      )}
       onClick={handleClick}
     >
       <img
         src={item.image}
         alt={item.name}
-        className="rnd-item-image"
+        className="w-full h-full object-contain rounded select-none"
         draggable={false}
       />
     </Rnd>

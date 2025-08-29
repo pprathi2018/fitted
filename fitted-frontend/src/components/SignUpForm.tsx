@@ -3,6 +3,11 @@
 import { useState, useEffect } from 'react';
 import { Mail, Lock, User, AlertCircle, Eye, EyeOff, Check } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/auth-store';
+import { Button } from '@/components/ui/button';
+import { FormInput } from '@/components/ui/form-input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { fittedButton } from '@/lib/styles';
+import { cn } from '@/lib/utils';
 
 export default function SignupForm() {
   const [formData, setFormData] = useState({
@@ -17,7 +22,6 @@ export default function SignupForm() {
   
   const { signup, isLoading, error, clearError } = useAuthStore();
 
-  // Clear error when inputs change
   useEffect(() => {
     if (error) {
       clearError();
@@ -52,162 +56,125 @@ export default function SignupForm() {
   return (
     <>
       {error && (
-        <div className="error-alert">
-          <AlertCircle className="error-icon" />
-          <p className="error-text">{error}</p>
-        </div>
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      <form onSubmit={handleSubmit} className="signup-form">
-        <div className="name-fields-row">
-          <div className="form-field">
-            <label htmlFor="firstName" className="form-label">
-              First Name
-            </label>
-            <div className="input-wrapper">
-              <User className="input-icon" />
-              <input
-                id="firstName"
-                name="firstName"
-                type="text"
-                value={formData.firstName}
-                onChange={handleChange}
-                className="form-input with-icon"
-                required
-                disabled={isLoading}
-              />
-            </div>
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <FormInput
+            id="firstName"
+            name="firstName"
+            type="text"
+            label="First Name"
+            icon={User}
+            value={formData.firstName}
+            onChange={handleChange}
+            required
+            disabled={isLoading}
+            placeholder="John"
+          />
 
-          <div className="form-field">
-            <label htmlFor="lastName" className="form-label">
-              Last Name
-            </label>
-            <div className="input-wrapper">
-              <User className="input-icon" />
-              <input
-                id="lastName"
-                name="lastName"
-                type="text"
-                value={formData.lastName}
-                onChange={handleChange}
-                className="form-input with-icon"
-                required
-                disabled={isLoading}
-              />
-            </div>
-          </div>
+          <FormInput
+            id="lastName"
+            name="lastName"
+            type="text"
+            label="Last Name"
+            icon={User}
+            value={formData.lastName}
+            onChange={handleChange}
+            required
+            disabled={isLoading}
+            placeholder="Doe"
+          />
         </div>
 
-        <div className="form-field">
-          <label htmlFor="email" className="form-label">
-            Email
-          </label>
-          <div className="input-wrapper">
-            <Mail className="input-icon" />
-            <input
-              id="email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="form-input with-icon"
-              required
-              autoComplete="email"
-              disabled={isLoading}
-            />
-          </div>
-        </div>
+        <FormInput
+          id="email"
+          name="email"
+          type="email"
+          label="Email"
+          icon={Mail}
+          value={formData.email}
+          onChange={handleChange}
+          required
+          autoComplete="email"
+          disabled={isLoading}
+          placeholder="john.doe@example.com"
+        />
 
-        <div className="form-field">
-          <label htmlFor="password" className="form-label">
-            Password
-          </label>
-          <div className="input-wrapper">
-            <Lock className="input-icon" />
-            <input
-              id="password"
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              value={formData.password}
-              onChange={handleChange}
-              className="form-input with-icon with-toggle"
-              required
-              autoComplete="new-password"
-              minLength={8}
-              disabled={isLoading}
-            />
+        <FormInput
+          id="password"
+          name="password"
+          type={showPassword ? 'text' : 'password'}
+          label="Password"
+          icon={Lock}
+          value={formData.password}
+          onChange={handleChange}
+          required
+          autoComplete="new-password"
+          disabled={isLoading}
+          placeholder="Min. 8 characters"
+          rightIcon={
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="password-toggle"
+              className="text-fitted-gray-400 hover:text-fitted-gray-600 transition-colors"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
-              disabled={isLoading}
             >
-              {showPassword ? (
-                <EyeOff className="toggle-icon" />
-              ) : (
-                <Eye className="toggle-icon" />
-              )}
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
-          </div>
-        </div>
+          }
+        />
 
-        <div className="form-field">
-          <label htmlFor="passwordConfirmation" className="form-label">
-            Confirm Password
-          </label>
-          <div className="input-wrapper">
-            <Lock className="input-icon" />
-            <input
-              id="passwordConfirmation"
-              name="passwordConfirmation"
-              type={showPasswordConfirmation ? 'text' : 'password'}
-              value={formData.passwordConfirmation}
-              onChange={handleChange}
-              className={`form-input with-icon with-toggle ${passwordsDontMatch ? 'error' : ''}`}
-              required
-              autoComplete="new-password"
-              disabled={isLoading}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPasswordConfirmation(!showPasswordConfirmation)}
-              className="password-toggle"
-              aria-label={showPasswordConfirmation ? 'Hide password' : 'Show password'}
-              disabled={isLoading}
-            >
-              {showPasswordConfirmation ? (
-                <EyeOff className="toggle-icon" />
-              ) : (
-                <Eye className="toggle-icon" />
-              )}
-            </button>
-          </div>
+        <div className="space-y-2">
+          <FormInput
+            id="passwordConfirmation"
+            name="passwordConfirmation"
+            type={showPasswordConfirmation ? 'text' : 'password'}
+            label="Confirm Password"
+            icon={Lock}
+            value={formData.passwordConfirmation}
+            onChange={handleChange}
+            required
+            autoComplete="new-password"
+            disabled={isLoading}
+            placeholder="Re-enter password"
+            error={passwordsDontMatch ? "Passwords do not match" : undefined}
+            rightIcon={
+              <button
+                type="button"
+                onClick={() => setShowPasswordConfirmation(!showPasswordConfirmation)}
+                className="text-fitted-gray-400 hover:text-fitted-gray-600 transition-colors"
+                aria-label={showPasswordConfirmation ? 'Hide password' : 'Show password'}
+              >
+                {showPasswordConfirmation ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            }
+          />
           {passwordsMatch && (
-            <p className="field-success">
-              <Check className="success-icon" /> Passwords match
+            <p className="flex items-center gap-1 text-xs text-green-600">
+              <Check className="h-3 w-3" /> Passwords match
             </p>
           )}
-          {passwordsDontMatch && (
-            <p className="field-error">Passwords do not match</p>
-          )}
         </div>
 
-        <button
+        <Button
           type="submit"
           disabled={isLoading || !passwordsMatch}
-          className="submit-button"
+          className={cn(fittedButton({ variant: "primary", size: "full" }), "disabled:opacity-50")}
         >
           {isLoading ? (
-            <span className="button-loading">
-              <span className="spinner"></span>
+            <span className="flex items-center justify-center gap-3">
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
               Creating account...
             </span>
           ) : (
             'Create Account'
           )}
-        </button>
+        </Button>
       </form>
     </>
   );

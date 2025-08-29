@@ -1,9 +1,0 @@
-/* src/app/styles/pages/auth.css */
-.auth-page {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #223a53 0%, #567e9c 50%, #7fa3c4 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}

@@ -3,6 +3,11 @@
 import { useState, useEffect } from 'react';
 import { Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/auth-store';
+import { Button } from '@/components/ui/button';
+import { FormInput } from '@/components/ui/form-input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { fittedButton } from '@/lib/styles';
+import { cn } from '@/lib/utils';
 
 export default function LoginForm() {
   const [email, setEmail] = useState('');
@@ -30,78 +35,63 @@ export default function LoginForm() {
   return (
     <>
       {error && (
-        <div className="error-alert">
-          <AlertCircle className="error-icon" />
-          <p className="error-text">{error}</p>
-        </div>
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      <form onSubmit={handleSubmit} className="login-form">
-        <div className="form-field">
-          <label htmlFor="email" className="form-label">
-            Email
-          </label>
-          <div className="input-wrapper">
-            <Mail className="input-icon" />
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="form-input with-icon"
-              required
-              autoComplete="email"
-              disabled={isLoading}
-            />
-          </div>
-        </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <FormInput
+          id="email"
+          type="email"
+          label="Email"
+          icon={Mail}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+          disabled={isLoading}
+          placeholder="Enter your email"
+        />
 
-        <div className="form-field">
-          <label htmlFor="password" className="form-label">
-            Password
-          </label>
-          <div className="input-wrapper">
-            <Lock className="input-icon" />
-            <input
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="form-input with-icon with-toggle"
-              required
-              autoComplete="current-password"
-              disabled={isLoading}
-            />
+        <FormInput
+          id="password"
+          type={showPassword ? 'text' : 'password'}
+          label="Password"
+          icon={Lock}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoComplete="current-password"
+          disabled={isLoading}
+          placeholder="Enter your password"
+          rightIcon={
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="password-toggle"
+              className="text-fitted-gray-400 hover:text-fitted-gray-600 transition-colors"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
-              disabled={isLoading}
             >
-              {showPassword ? (
-                <EyeOff className="toggle-icon" />
-              ) : (
-                <Eye className="toggle-icon" />
-              )}
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
-          </div>
-        </div>
+          }
+        />
 
-        <button
+        <Button
           type="submit"
           disabled={isLoading}
-          className="submit-button"
+          className={cn(fittedButton({ variant: "primary", size: "full" }))}
         >
           {isLoading ? (
-            <span className="button-loading">
-              <span className="spinner"></span>
+            <span className="flex items-center justify-center gap-3">
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
               Logging in...
             </span>
           ) : (
             'Log In'
           )}
-        </button>
+        </Button>
       </form>
     </>
   );

@@ -1,21 +1,24 @@
+// src/components/OutfitCanvas.tsx
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { DndProvider, useDrop } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, pointerWithin } from '@dnd-kit/core';
 import { Trash2, MoveUp, MoveDown, ChevronDown, ChevronUp } from 'lucide-react';
 import { ClothingItem as ClothingItemType, OutfitItem } from '@/types/clothing';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import ClothingItemSidePanel from './ClothingItemSidePanel';
-import CanvasImage from './CanvasImage';
+import CanvasDropZone from './CanvasDropZone';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 const OutfitCanvas = () => {
   const [clothingItems] = useLocalStorage<ClothingItemType[]>('clothing-items', []);
   const [outfitItems, setOutfitItems] = useState<OutfitItem[]>([]);
   const [nextZIndex, setNextZIndex] = useState(1);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [activeId, setActiveId] = useState<string | null>(null);
+
 
   const groupedItems = useMemo(() => {
     return clothingItems.reduce((acc, item) => {
@@ -27,52 +30,74 @@ const OutfitCanvas = () => {
     }, {} as Record<string, ClothingItemType[]>);
   }, [clothingItems]);
 
-  function outfitContainsClothingItem(clothingItemId: string) {
-    return outfitItems.some(outfitItem => outfitItem.clothingId === clothingItemId);
-  }
-
-  const handleItemSelect = useCallback((itemId: string) => {
-    setSelectedItemId(prevSelected => prevSelected === itemId ? null : itemId);
-  }, []);
-
-  const handleCanvasClick = useCallback((e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    const isCanvasBackground = target.classList.contains('canvas-dropzone') || 
-                              target.classList.contains('canvas-placeholder') ||
-                              target.classList.contains('canvas-placeholder-text');
+  const selectedItemZInfo = useMemo(() => {
+    if (!selectedItemId || outfitItems.length === 0) return { isHighest: false, isLowest: false };
     
-    if (isCanvasBackground) {
-      setSelectedItemId(null);
+    const selectedItem = outfitItems.find(item => item.id === selectedItemId);
+    if (!selectedItem) return { isHighest: false, isLowest: false };
+    
+    const zIndexes = outfitItems.map(item => item.zIndex);
+    const maxZ = Math.max(...zIndexes);
+    const minZ = Math.min(...zIndexes);
+    
+    return {
+      isHighest: selectedItem.zIndex === maxZ,
+      isLowest: selectedItem.zIndex === minZ
+    };
+  }, [selectedItemId, outfitItems]);
+
+  const outfitContainsClothingItem = (clothingItemId: string) => {
+    return outfitItems.some(outfitItem => outfitItem.clothingId === clothingItemId);
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && over.id === 'canvas') {
+      const draggedItem = clothingItems.find(item => item.id === active.id);
+      
+      if (draggedItem && !outfitContainsClothingItem(draggedItem.id)) {
+        // Use the final translated position from the drag
+        const finalX = event.active.rect.current.translated?.left;
+        const finalY = event.active.rect.current.translated?.top;
+        
+        if (finalX !== undefined && finalY !== undefined && over.rect) {
+          // Calculate position relative to canvas
+          const x = Math.max(0, Math.min(finalX - over.rect.left, over.rect.width - 128));
+          const y = Math.max(0, Math.min(finalY - over.rect.top, over.rect.height - 160));
+          
+          const newOutfitItem: OutfitItem = {
+            id: `${draggedItem.id}-${Date.now()}`,
+            clothingId: draggedItem.id,
+            x,
+            y,
+            zIndex: nextZIndex,
+            width: 128,
+            height: 160
+          };
+          
+          setOutfitItems(prev => [...prev, newOutfitItem]);
+          setNextZIndex(prev => prev + 1);
+          setSelectedItemId(newOutfitItem.id);
+        }
+      }
     }
-  }, []);
-
-  const handleItemDragStop = useCallback((itemId: string, x: number, y: number) => {
-    setOutfitItems(prev => prev.map(item => 
-      item.id === itemId 
-        ? { ...item, x, y, zIndex: nextZIndex }
-        : item
-    ));
-    setNextZIndex(prev => prev + 1);
-    setSelectedItemId(itemId);
-  }, [nextZIndex]);
-
-  const handleItemResizeStop = useCallback((itemId: string, width: number, height: number) => {
-    setOutfitItems(prev => prev.map(item => 
-      item.id === itemId 
-        ? { ...item, width, height }
-        : item
-    ));
-  }, []);
+    
+    setActiveId(null);
+  };
 
   const deleteSelectedItem = useCallback(() => {
     if (!selectedItemId) return;
-    
     setOutfitItems(prev => prev.filter(item => item.id !== selectedItemId));
     setSelectedItemId(null);
   }, [selectedItemId]);
 
   const moveSelectedToFront = useCallback(() => {
-    if (!selectedItemId) return;
+    if (!selectedItemId || selectedItemZInfo.isHighest) return;
     
     setOutfitItems(prev => prev.map(item => 
       item.id === selectedItemId 
@@ -80,10 +105,10 @@ const OutfitCanvas = () => {
         : item
     ));
     setNextZIndex(prev => prev + 1);
-  }, [selectedItemId, nextZIndex]);
+  }, [selectedItemId, nextZIndex, selectedItemZInfo.isHighest]);
 
   const moveSelectedToBack = useCallback(() => {
-    if (!selectedItemId) return;
+    if (!selectedItemId || selectedItemZInfo.isLowest) return;
     
     const minZIndex = Math.min(...outfitItems.map(item => item.zIndex));
     setOutfitItems(prev => prev.map(item => 
@@ -91,7 +116,7 @@ const OutfitCanvas = () => {
         ? { ...item, zIndex: minZIndex - 1 }
         : item
     ));
-  }, [selectedItemId, outfitItems]);
+  }, [selectedItemId, outfitItems, selectedItemZInfo.isLowest]);
 
   const toggleSection = useCallback((category: string) => {
     setCollapsedSections(prev => ({
@@ -100,184 +125,140 @@ const OutfitCanvas = () => {
     }));
   }, []);
 
-  const CanvasDropZone = () => {
-    const [{ isOver }, drop] = useDrop(() => ({
-      accept: 'clothing-item',
-      drop: (draggedItem: any, monitor) => {
-        const offset = monitor.getClientOffset();
-        const canvasRect = document.getElementById('canvas')?.getBoundingClientRect();
-        
-        if (offset && canvasRect && !draggedItem.fromCanvas) {
-          if (!outfitContainsClothingItem(draggedItem.id)) {
-            const x = offset.x - canvasRect.left - 64;
-            const y = offset.y - canvasRect.top - 80;
-            const constrainedX = Math.max(0, Math.min(x, canvasRect.width - 128));
-            const constrainedY = Math.max(0, Math.min(y, canvasRect.height - 160));
-            
-            const newOutfitItem: OutfitItem = {
-              id: `${draggedItem.id}-${Date.now()}`,
-              clothingId: draggedItem.id,
-              x: constrainedX,
-              y: constrainedY,
-              zIndex: nextZIndex,
-              width: 128,
-              height: 160
-            };
-            setOutfitItems(prev => [...prev, newOutfitItem]);
-            setNextZIndex(prev => prev + 1);
-            setSelectedItemId(newOutfitItem.id);
-          }
-        }
-      },
-      collect: (monitor) => ({
-        isOver: monitor.isOver(),
-      }),
-    }));
-
-    return (
-      <div
-        ref={drop as any}
-        id="canvas"
-        className={`canvas-dropzone ${isOver ? 'drag-over' : ''}`}
-        onClick={handleCanvasClick}
-      >
-        <div className="canvas-placeholder" onClick={handleCanvasClick}>
-          {outfitItems.length === 0 ? (
-            <p className="canvas-placeholder-text" onClick={handleCanvasClick}>
-              Drag clothing items here to create your outfit
-            </p>
-          ) : null}
-        </div>
-        
-        {outfitItems.map((outfitItem) => {
-          const clothingItem = clothingItems.find(item => item.id === outfitItem.clothingId);
-          if (!clothingItem) return null;
-          
-          return (
-            <CanvasImage
-              key={outfitItem.id}
-              item={clothingItem}
-              outfitItemId={outfitItem.id}
-              isSelected={selectedItemId === outfitItem.id}
-              position={{ x: outfitItem.x, y: outfitItem.y }}
-              size={{ width: outfitItem.width || 128, height: outfitItem.height || 160 }}
-              zIndex={outfitItem.zIndex}
-              onSelect={handleItemSelect}
-              onDragStop={handleItemDragStop}
-              onResizeStop={handleItemResizeStop}
-            />
-          );
-        })}
-      </div>
-    );
-  };
-
   const clearOutfit = useCallback(() => {
     setOutfitItems([]);
     setNextZIndex(1);
     setSelectedItemId(null);
   }, []);
 
+  const categoryLabels: Record<string, string> = {
+    top: 'Tops',
+    bottom: 'Bottoms',
+    dress: 'Dresses',
+    outerwear: 'Outerwear',
+    shoes: 'Shoes',
+    accessory: 'Accessories',
+  };
+
+  const activeDragItem = activeId ? clothingItems.find(item => item.id === activeId) : null;
+
   return (
-    <DndProvider backend={HTML5Backend}>
-      <div className="outfit-page flex">
-        {/* Sidebar */}
-        <div className="outfit-sidebar">
-          <div className="sidebar-header">
-            <h2 className="sidebar-title">Your Closet</h2>
-            <p className="sidebar-subtitle">{clothingItems.length} items</p>
+    <DndContext 
+      onDragStart={handleDragStart} 
+      onDragEnd={handleDragEnd}
+      collisionDetection={pointerWithin}
+      autoScroll={false}
+    >
+      <div className="h-screen flex">
+        <div className="w-96 bg-white shadow-lg flex flex-col">
+          <div className="p-4 border-b">
+            <h2 className="text-xl font-semibold text-fitted-gray-900">Your Closet</h2>
+            <p className="text-sm text-fitted-gray-500">{clothingItems.length} items</p>
           </div>
           
-          <div className="sidebar-content">
+          <div className="flex-1 overflow-y-auto p-4">
             {clothingItems.length === 0 ? (
-              <div className="empty-closet">
-                <p className="empty-closet-text">No clothing items yet.</p>
-                <p className="empty-closet-subtext">
+              <div className="text-center py-8">
+                <p className="text-fitted-gray-600">No clothing items yet.</p>
+                <p className="text-sm text-fitted-gray-500 mt-1">
                   Go to the upload page to add some clothes!
                 </p>
               </div>
             ) : (
-              <div className="categories-container">
+              <div className="space-y-2">
                 {Object.entries(groupedItems).map(([category, items]) => (
-                  <div key={category} className="category-section">
+                  <Card key={category} className="overflow-hidden">
                     <button
-                      className="category-header"
+                      className="w-full flex items-center justify-between p-3 hover:bg-fitted-gray-50 transition-colors"
                       onClick={() => toggleSection(category)}
                     >
-                      <h3 className="category-title">
-                        {category} ({items.length})
+                      <h3 className="text-sm font-medium text-fitted-gray-700 capitalize">
+                        {categoryLabels[category]} ({items.length})
                       </h3>
-                      {collapsedSections[category] ? (
-                        <ChevronDown className="category-chevron" />
-                      ) : (
-                        <ChevronUp className="category-chevron" />
-                      )}
+                      {collapsedSections[category] ? 
+                        <ChevronDown className="h-5 w-5 text-fitted-gray-400" /> : 
+                        <ChevronUp className="h-5 w-5 text-fitted-gray-400" />
+                      }
                     </button>
                     {!collapsedSections[category] && (
-                      <div className="category-items-wrapper">
-                        <div className="category-items-scroll">
+                      <CardContent className="p-3 pt-0">
+                        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                           {items.map((item) => (
-                            <div key={item.id} className="category-item-container">
-                              <ClothingItemSidePanel item={item} inOutfit={outfitContainsClothingItem(item.id)} />
-                            </div>
+                            <ClothingItemSidePanel 
+                              key={item.id} 
+                              item={item} 
+                              inOutfit={outfitContainsClothingItem(item.id)} 
+                            />
                           ))}
                         </div>
-                      </div>
+                      </CardContent>
                     )}
-                  </div>
+                  </Card>
                 ))}
               </div>
             )}
           </div>
         </div>
 
-        {/* Main Canvas Area */}
-        <div className="canvas-area">
-          <div className="canvas-header">
-            <h1 className="canvas-title">Outfit Canvas</h1>
-            <div className="canvas-header-right">
-              <div className="canvas-actions-container">
-                <button
+        <div className="flex-1 flex flex-col bg-fitted-gray-50">
+          <div className="bg-white shadow-sm p-4 flex items-center justify-between">
+            <h1 className="text-2xl font-semibold text-fitted-gray-900">Outfit Canvas</h1>
+            
+            <div className="flex items-center gap-4">
+              <div className="flex gap-2 p-1 bg-fitted-gray-100 rounded-lg">
+                <Button
                   onClick={deleteSelectedItem}
                   disabled={!selectedItemId}
-                  className="canvas-action-btn canvas-action-delete"
-                  title="Delete item"
+                  size="sm"
+                  variant="destructive"
+                  className="h-8 w-8 p-0"
                 >
                   <Trash2 size={16} />
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={moveSelectedToFront}
-                  disabled={!selectedItemId}
-                  className="canvas-action-btn canvas-action-front"
-                  title="Move to front"
+                  disabled={!selectedItemId || selectedItemZInfo.isHighest}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 p-0"
                 >
                   <MoveUp size={16} />
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={moveSelectedToBack}
-                  disabled={!selectedItemId}
-                  className="canvas-action-btn canvas-action-back"
-                  title="Move to back"
+                  disabled={!selectedItemId || selectedItemZInfo.isLowest}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 p-0"
                 >
                   <MoveDown size={16} />
-                </button>
+                </Button>
               </div>
-              <button
+              
+              <Button
                 onClick={clearOutfit}
                 disabled={outfitItems.length === 0}
-                className="clear-button"
+                variant="destructive"
+                size="sm"
               >
-                <Trash2 className="clear-icon" />
-                <span>Clear Outfit</span>
-              </button>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear Outfit
+              </Button>
             </div>
           </div>
           
-          <div className="canvas-container">
-            <CanvasDropZone />
+          <div className="flex-1 p-6">
+            <CanvasDropZone
+              outfitItems={outfitItems}
+              clothingItems={clothingItems}
+              selectedItemId={selectedItemId}
+              onItemSelect={setSelectedItemId}
+              onItemUpdate={setOutfitItems}
+              onZIndexUpdate={setNextZIndex}
+            />
           </div>
           
-          <div className="canvas-footer">
+          <div className="bg-white border-t px-4 py-3 flex justify-between text-sm text-fitted-gray-600">
             <span>{outfitItems.length} items in current outfit</span>
             <span>
               {selectedItemId 
@@ -288,7 +269,21 @@ const OutfitCanvas = () => {
           </div>
         </div>
       </div>
-    </DndProvider>
+
+      <DragOverlay dropAnimation={null}>
+        {activeDragItem && (
+          <div className="pointer-events-none">
+            <div className="w-32 h-40 bg-white rounded-lg border-2 border-fitted-blue-accent shadow-lg flex items-center justify-center">
+              <img 
+                src={activeDragItem.image} 
+                alt={activeDragItem.name}
+                className="max-w-full max-h-full object-contain"
+              />
+            </div>
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
   );
 };
 

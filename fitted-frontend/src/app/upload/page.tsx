@@ -1,9 +1,8 @@
-// src/app/upload/page.tsx
 import ImageUpload from '@/components/ImageUpload';
 
 export default function UploadPage() {
   return (
-    <div className="upload-page">
+    <div className="min-h-screen bg-fitted-gray-50 py-8">
       <ImageUpload />
     </div>
   );

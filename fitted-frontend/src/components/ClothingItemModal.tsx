@@ -1,8 +1,16 @@
 'use client';
 
-import { useEffect } from 'react';
-import { Trash2, X } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { ClothingItem } from '@/types/clothing';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { fittedButton } from '@/lib/styles';
+import { cn } from '@/lib/utils';
 
 interface ClothingItemModalProps {
   item: ClothingItem | null;
@@ -12,29 +20,12 @@ interface ClothingItemModalProps {
 }
 
 const ClothingItemModal = ({ item, isOpen, onClose, onDelete }: ClothingItemModalProps) => {
+  if (!item) return null;
 
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (isOpen) {
-      onClose();
-    }
-    onDelete(item!.id);
+  const handleDeleteClick = () => {
+    onClose();
+    onDelete(item.id);
   };
-
-  // Handle body scroll lock when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
-
-  if (!isOpen || !item) return null;
 
   const categoryLabels: Record<string, string> = {
     top: 'Top',
@@ -46,53 +37,55 @@ const ClothingItemModal = ({ item, isOpen, onClose, onDelete }: ClothingItemModa
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-btns flex flex-row gap-2">
-          <button className="modal-delete-btn" onClick={handleDeleteClick}>
-            <Trash2 className="delete-icon" />
-          </button>
-          <button
-            className="modal-close-btn"
-            onClick={onClose}
-            aria-label="Close modal"
-          >
-            <X size={24} />
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-2xl">{item.name}</DialogTitle>
+        </DialogHeader>
         
-        <div className="modal-body">
-          <div className="modal-image-container">
+        <div className="space-y-6">
+          <div className="h-96 bg-fitted-gray-50 rounded-lg flex items-center justify-center p-8">
             <img
               src={item.image}
               alt={item.name}
-              className="modal-image"
+              className="max-w-full max-h-full object-contain"
             />
           </div>
           
-          <div className="modal-info">
-            <h2 className="modal-item-name">{item.name}</h2>
-            <p className="modal-item-category">
+          <div className="space-y-4">
+            <p className="text-lg text-fitted-gray-600 capitalize">
               {categoryLabels[item.category] || item.category}
             </p>
             
-            <div className="modal-metadata">
-              <div className="metadata-item">
-                <span className="metadata-label">Type:</span>
-                <span className="metadata-value">{categoryLabels[item.category]}</span>
-              </div>
-              <div className="metadata-item">
-                <span className="metadata-label">Added:</span>
-                <span className="metadata-value">
-                  {new Date(item.uploadedAt).toLocaleDateString()}
-                </span>
-              </div>
+            <div className="pt-4 border-t space-y-3">
+              <InfoRow label="Type" value={categoryLabels[item.category]} />
+              <InfoRow 
+                label="Added" 
+                value={new Date(item.uploadedAt).toLocaleDateString()} 
+              />
             </div>
+            
+            <Button
+              onClick={handleDeleteClick}
+              className={cn(fittedButton({ variant: "danger", size: "full" }))}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Item
+            </Button>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between items-center">
+      <span className="text-sm font-medium text-fitted-gray-500">{label}:</span>
+      <span className="text-sm font-semibold text-fitted-gray-900">{value}</span>
+    </div>
+  );
+}
 
 export default ClothingItemModal;

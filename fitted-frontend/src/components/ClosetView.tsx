@@ -5,6 +5,7 @@ import { ClothingItem } from '@/types/clothing';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import ClosetItemCard from './ClosetItemCard';
 import ClothingItemModal from './ClothingItemModal';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const ClosetView = () => {
   const [clothingItems, setClothingItems] = useLocalStorage<ClothingItem[]>('clothing-items', []);
@@ -32,7 +33,6 @@ const ClosetView = () => {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    // Delay clearing selected item to prevent flicker during close animation
     setTimeout(() => setSelectedItem(null), 300);
   };
 
@@ -46,34 +46,40 @@ const ClosetView = () => {
   };
 
   return (
-    <div className="closet-container">
-      <h1 className="closet-page-title">Your Closet</h1>
+    <div className="max-w-7xl mx-auto px-8">
+      <h1 className="text-4xl font-bold text-fitted-gray-900 text-center mb-8">
+        Your Closet
+      </h1>
       
       {clothingItems.length === 0 ? (
-        <div className="empty-closet-page">
-          <p className="empty-closet-page-text">Your closet is empty.</p>
-          <p className="empty-closet-page-subtext">
+        <div className="text-center py-16">
+          <p className="text-xl text-fitted-gray-600 mb-2">Your closet is empty.</p>
+          <p className="text-fitted-gray-500">
             Start by uploading some clothing items to build your wardrobe!
           </p>
         </div>
       ) : (
-        <div className="closet-categories">
+        <div className="space-y-8">
           {Object.entries(groupedItems).map(([category, items]) => (
-            <div key={category} className="closet-category-section">
-              <h2 className="closet-category-title">
-                {categoryLabels[category] || category} ({items.length})
-              </h2>
-              <div className="closet-items-grid">
-                {items.map((item) => (
-                  <ClosetItemCard
-                    key={item.id}
-                    item={item}
-                    onDelete={handleDeleteItem}
-                    onClick={handleItemClick}
-                  />
-                ))}
-              </div>
-            </div>
+            <Card key={category} className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-2xl capitalize">
+                  {categoryLabels[category] || category} ({items.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                  {items.map((item) => (
+                    <ClosetItemCard
+                      key={item.id}
+                      item={item}
+                      onDelete={handleDeleteItem}
+                      onClick={handleItemClick}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

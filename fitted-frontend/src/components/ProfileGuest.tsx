@@ -1,38 +1,59 @@
 import Link from 'next/link';
 import { User, LogIn, UserPlus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { fittedButton } from '@/lib/styles';
+import { cn } from '@/lib/utils';
 
 export default function ProfileGuest() {
   return (
-    <div className="profile-guest">
-      <div className="guest-card">
-        <div className="guest-header">
-          <User className="guest-icon" />
-          <h2 className="guest-title">Welcome to Fitted</h2>
-          <p className="guest-subtitle">Log in to access your virtual wardrobe</p>
+    <Card className="shadow-xl">
+      <CardHeader className="text-center pb-4">
+        <div className="mx-auto mb-4 size-16 rounded-full bg-fitted-blue-sky flex items-center justify-center">
+          <User className="size-8 text-fitted-blue-accent" />
         </div>
-
-        <div className="guest-actions">
-          <Link href="/login" className="guest-action-btn primary">
-            <LogIn className="action-icon" />
-            <span>Log In</span>
-          </Link>
+        <CardTitle className="text-3xl font-bold">Welcome to Fitted</CardTitle>
+        <CardDescription className="text-base">
+          Log in to access your virtual wardrobe
+        </CardDescription>
+      </CardHeader>
+      
+      <CardContent className="space-y-6">
+        <div className="flex flex-col gap-3">
+          <Button asChild className={cn(fittedButton({ variant: "primary", size: "full" }))}>
+            <Link href="/login" className="flex items-center justify-center gap-3">
+              <LogIn className="size-5" />
+              <span>Log In</span>
+            </Link>
+          </Button>
           
-          <Link href="/signup" className="guest-action-btn secondary">
-            <UserPlus className="action-icon" />
-            <span>Create Account</span>
-          </Link>
+          <Button asChild className={cn(fittedButton({ variant: "secondary", size: "full" }))}>
+            <Link href="/signup" className="flex items-center justify-center gap-3">
+              <UserPlus className="size-5" />
+              <span>Create Account</span>
+            </Link>
+          </Button>
         </div>
 
-        <div className="guest-info">
-          <h3 className="info-title">Why create an account?</h3>
-          <ul className="info-list">
-            <li>Save your clothing items permanently</li>
-            <li>Create and manage multiple outfits</li>
-            <li>Access your wardrobe from any device</li>
-            <li>Share outfits with friends</li>
+        <div className="border-t pt-6">
+          <h3 className="font-semibold text-fitted-gray-800 mb-3">
+            Why create an account?
+          </h3>
+          <ul className="space-y-2 text-sm text-fitted-gray-600">
+            {[
+              'Save your clothing items permanently',
+              'Create and manage multiple outfits',
+              'Access your wardrobe from any device',
+              'Share outfits with friends'
+            ].map((benefit) => (
+              <li key={benefit} className="flex items-start gap-2">
+                <span className="text-green-600 mt-0.5">✓</span>
+                <span>{benefit}</span>
+              </li>
+            ))}
           </ul>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

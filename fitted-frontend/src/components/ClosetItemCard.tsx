@@ -2,6 +2,7 @@
 
 import { Trash2 } from 'lucide-react';
 import { ClothingItem } from '@/types/clothing';
+import { Button } from '@/components/ui/button';
 
 interface ClosetItemCardProps {
   item: ClothingItem;
@@ -15,29 +16,29 @@ const ClosetItemCard = ({ item, onDelete, onClick }: ClosetItemCardProps) => {
     onDelete(item.id);
   };
 
-  const handleCardClick = () => {
-    onClick(item);
-  };
-
   return (
-    <div className="closet-item-card" onClick={handleCardClick}>
-      <div className="closet-item-image-container">
+    <div 
+      className="group relative bg-white rounded-lg border-2 border-transparent hover:border-fitted-blue-sky transition-all cursor-pointer hover:-translate-y-1 hover:shadow-lg"
+      onClick={() => onClick(item)}
+    >
+      <div className="relative h-48 bg-fitted-gray-50 rounded-t-lg flex items-center justify-center p-4">
         <img
           src={item.image}
           alt={item.name}
-          className="closet-item-image"
+          className="max-w-full max-h-full object-contain"
         />
-        <button
+        <Button
           onClick={handleDeleteClick}
-          className="closet-item-delete-btn"
-          title="Delete item"
+          size="sm"
+          variant="destructive"
+          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
         >
-          <Trash2 className="delete-icon" />
-        </button>
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </div>
       
-      <div className="closet-item-info">
-        <p className="closet-item-name">{item.name}</p>
+      <div className="p-4">
+        <p className="font-semibold text-fitted-gray-900 truncate">{item.name}</p>
       </div>
     </div>
   );
