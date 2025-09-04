@@ -11,8 +11,9 @@ interface AuthStore extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
   signup: (credentials: SignupCredentials) => Promise<void>;
   logout: () => Promise<void>;
-  checkAuth: () => Promise<void>;
+  checkAuth: () => Promise<boolean>;
   initializeAuth: () => Promise<void>;
+  silentLogout: () => Promise<void>;
   clearAuth: (errorMessage: string | null, isInitialized?: boolean) => Promise<void>;
   clearError: () => void;
   setUser: (user: User | null) => void;
@@ -91,7 +92,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   checkAuth: async () => {
-    if (get().isLoading) return;
+    if (get().isLoading) return false;
     
     set({ isLoading: true });
     
@@ -105,12 +106,24 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           isLoading: false,
           isInitialized: true,
         });
+        return true;
       } else {
         await get().clearAuth(null, true);
+        return false;
       }
     } catch (error) {
       await get().clearAuth(null, true);
+      return false;
     }
+  },
+
+  silentLogout: async () => {
+    try {
+      await authApi.logout();
+    } catch (error) {
+      console.error('Silent logout failed:', error);
+    }
+    await get().clearAuth(null, true);
   },
 
   initializeAuth: async () => {

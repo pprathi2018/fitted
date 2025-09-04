@@ -1,18 +1,14 @@
-import { getServerAuth } from '@/lib/auth/server';
-import ProfileAuthenticated from '@/components/ProfileAuthenticated';
-import ProfileGuest from '@/components/ProfileGuest';
+import { cookies } from 'next/headers';
+import ProfileWrapper from '@/components/ProfileWrapper';
 
 export default async function ProfilePage() {
-  const { user, isAuthenticated } = await getServerAuth();
-
+  const cookieStore = cookies();
+  const hasRefreshToken = cookieStore.has('refreshToken');
+  
   return (
     <main className="min-h-screen bg-fitted-gray-50 flex items-center justify-center p-8">
       <div className="w-full max-w-xl">
-        {isAuthenticated && user ? (
-          <ProfileAuthenticated user={user} />
-        ) : (
-          <ProfileGuest />
-        )}
+        <ProfileWrapper hasRefreshToken={hasRefreshToken} />
       </div>
     </main>
   );

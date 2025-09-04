@@ -1,6 +1,6 @@
 export const AUTH_ROUTES = ['/login', '/signup'] as const;
 
-export const PUBLIC_ROUTES = ['/', '/about', '/contact'] as const;
+export const PUBLIC_ROUTES = ['/', '/about', '/contact', '/profile'] as const;
 
 export const PROTECTED_ROUTES = [
   '/closet',
