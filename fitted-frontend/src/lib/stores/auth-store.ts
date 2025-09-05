@@ -127,9 +127,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   initializeAuth: async () => {
-    if (get().isInitialized || get().isLoading) return;
+    const state = get();
+    if (state.isInitialized || state.isLoading) {
+      console.log('initializeAuth: Already initialized or loading, skipping');
+      return;
+    }
 
     console.log('initializeAuth: Starting initialization...');
+    set({ isLoading: true });
     
     const storedUser = authApi.getStoredUser();
     console.log('initializeAuth: Has stored user:', !!storedUser);
@@ -163,25 +168,25 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       });
     } else {
       console.log('initializeAuth: No stored user, attempting to fetch from server...');
-      set({ isLoading: true });
       
       try {
         const user = await authApi.getCurrentUser();
         console.log('initializeAuth: Fetched user:', user ? user.email : 'null');
         
-        if (user) {
-          set({
-            user,
-            isAuthenticated: true,
-            isLoading: false,
-            isInitialized: true,
-          });
-        } else {
-          await get().clearAuth(null, true);
-        }
+        set({
+          user: user,
+          isAuthenticated: !!user,
+          isLoading: false,
+          isInitialized: true,
+        });
       } catch (error) {
         console.error('initializeAuth: Failed to fetch user:', error);
-        await get().clearAuth(null, true);
+        set({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          isInitialized: true,
+        });
       }
     }
   },
@@ -193,7 +198,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       user: null,
       isAuthenticated: false,
       isLoading: false,
-      isInitialized: isInitialized ?? false,
+      isInitialized: isInitialized ?? get().isInitialized,
     });
   },
 
@@ -208,12 +213,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         user,
         isAuthenticated: true,
         error: null,
+        isInitialized: true,
       });
     } else {
       authApi.clearUser();
       set({
         user: null,
         isAuthenticated: false,
+        isInitialized: true,
       });
     }
   },

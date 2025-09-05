@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { Suspense } from 'react';
 import './styles/globals.css';
-import Navigation from '@/components/Navigation';
 import AuthProvider from '@/components/AuthProvider';
+import ClientWrapper from '@/components/ClientWrapper';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -20,12 +19,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <Suspense fallback={null}>
-          <AuthProvider>
-            <Navigation />
-            <main>{children}</main>
-          </AuthProvider>
-        </Suspense>
+        <AuthProvider>
+          <ClientWrapper>
+            {children}
+          </ClientWrapper>
+        </AuthProvider>
       </body>
     </html>
   );

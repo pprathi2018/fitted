@@ -11,26 +11,26 @@ interface AuthProviderProps {
 }
 
 export default function AuthProvider({ children, initialUser }: AuthProviderProps) {
-  const initializeAuth = useAuthStore((state) => state.initializeAuth);
-  const setUser = useAuthStore((state) => state.setUser);
+  const { initializeAuth, setUser, isInitialized } = useAuthStore();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const initialized = useRef(false);
+  const hasInitialized = useRef(false);
   const previousPathname = useRef(pathname);
 
   useEffect(() => {
-    if (initialUser && !initialized.current) {
-      setUser(initialUser);
-      initialized.current = true;
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      console.log('AuthProvider: Initializing auth...');
+      
+      if (initialUser) {
+        console.log('AuthProvider: Setting initial user');
+        setUser(initialUser);
+      } else {
+        console.log('AuthProvider: No initial user, calling initializeAuth');
+        initializeAuth();
+      }
     }
-  }, [initialUser, setUser]);
-
-  useEffect(() => {
-    if (!initialized.current) {
-      initializeAuth();
-      initialized.current = true;
-    }
-  }, [initializeAuth]);
+  }, []);
 
   useEffect(() => {
     const returnUrl = searchParams.get('returnUrl');
