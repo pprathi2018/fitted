@@ -1,34 +1,38 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PUBLIC_ROUTES = ['/'];
+const PUBLIC_ROUTES = ['/', '/about', '/contact'];
 const AUTH_ROUTES = ['/login', '/signup'];
-const PROTECTED_ROUTES = ['/closet', '/outfit', '/upload'];
+const PROTECTED_ROUTES = ['/closet', '/outfit', '/upload', '/settings'];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  const refreshToken = request.cookies.get('refreshToken');
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('.')
+  ) {
+    return NextResponse.next();
+  }
 
-  const hasValidAuth = !!refreshToken?.value;
-  
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
   const isAuthRoute = AUTH_ROUTES.some(route => pathname.startsWith(route));
   const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
   
-  if (isPublicRoute) {
+  if (isPublicRoute || pathname === '/profile') {
     return NextResponse.next();
   }
   
-  if (isAuthRoute && hasValidAuth) {
-    return NextResponse.redirect(new URL('/', request.url));
+  if (isAuthRoute) {
+    return NextResponse.next();
   }
   
-  if (isProtectedRoute && !hasValidAuth) {
+  const hasRefreshToken = request.cookies.has('refreshToken');
+  
+  if (isProtectedRoute && !hasRefreshToken) {
     const loginUrl = new URL('/login', request.url);
-    
     loginUrl.searchParams.set('returnUrl', pathname);
-    
     return NextResponse.redirect(loginUrl);
   }
   
@@ -37,6 +41,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*|_next).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };

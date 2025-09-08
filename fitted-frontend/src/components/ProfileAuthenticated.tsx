@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { User } from '@/lib/auth/types';
 import { Mail, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/auth-store';
@@ -13,10 +14,12 @@ interface ProfileAuthenticatedProps {
 }
 
 export default function ProfileAuthenticated({ user }: ProfileAuthenticatedProps) {
-  const logout = useAuthStore((state) => state.logout);
+  const { logout } = useAuthStore();
+  const router = useRouter();
 
   const handleLogout = async () => {
     await logout();
+    router.push('/');
   };
 
   return (

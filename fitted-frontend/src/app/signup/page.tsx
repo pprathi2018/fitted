@@ -1,25 +1,38 @@
-import { redirect } from 'next/navigation';
-import { hasValidAuth } from '@/lib/auth/server';
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/lib/stores/auth-store';
 import SignupForm from '@/components/SignUpForm';
 import Link from 'next/link';
-import { authPageLayout, pageContainer, glassCard } from '@/lib/styles';
 
-export default async function SignupPage() {
-  const isAuthenticated = await hasValidAuth();
-  
+export default function SignupPage() {
+  const router = useRouter();
+  const { isAuthenticated, isInitialized } = useAuthStore();
+
+  useEffect(() => {
+    if (isInitialized && isAuthenticated) {
+      router.replace('/');
+    }
+  }, [isAuthenticated, isInitialized, router]);
+
+  if (!isInitialized) {
+    return null;
+  }
+
   if (isAuthenticated) {
-    redirect('/');
+    return null;
   }
 
   return (
-    <main className={authPageLayout}>
-      <div className={pageContainer}>
+    <main className="min-h-screen bg-fitted-gradient flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <h1 className="fitted-logo text-6xl">Fitted</h1>
           <p className="mt-2 text-fitted-gray-600">Create your virtual wardrobe</p>
         </div>
 
-        <div className={glassCard}>
+        <div className="glass-card rounded-2xl p-8 shadow-xl">
           <h2 className="text-2xl font-semibold text-fitted-gray-800 mb-6">Create Account</h2>
           <SignupForm />
           

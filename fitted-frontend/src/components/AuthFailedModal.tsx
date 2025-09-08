@@ -16,20 +16,24 @@ import { cn } from '@/lib/utils';
 interface AuthFailedModalProps {
   isOpen: boolean;
   message?: string;
+  setShowAuthFailedModal: (show: boolean) => void;
 }
 
 export default function AuthFailedModal({ 
   isOpen, 
-  message = "Your session has expired. Please log in again to continue."
+  message = "Your session has expired. Please log in again to continue.",
+  setShowAuthFailedModal,
 }: AuthFailedModalProps) {
   const router = useRouter();
 
   const handleLogin = () => {
     router.push('/login');
+    setShowAuthFailedModal(false);
   };
 
   const handleSignup = () => {
     router.push('/signup');
+    setShowAuthFailedModal(false);
   };
 
   return (

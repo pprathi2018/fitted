@@ -8,23 +8,70 @@ import {
 } from '@/lib/auth/types';
 
 interface AuthStore extends AuthState {
-  login: (credentials: LoginCredentials) => Promise<void>;
-  signup: (credentials: SignupCredentials) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<string>;
+  signup: (credentials: SignupCredentials) => Promise<string>;
   logout: () => Promise<void>;
-  checkAuth: () => Promise<boolean>;
   initializeAuth: () => Promise<void>;
-  silentLogout: () => Promise<void>;
-  clearAuth: (errorMessage: string | null, isInitialized?: boolean) => Promise<void>;
-  clearError: () => void;
+  clearAuth: () => void;
   setUser: (user: User | null) => void;
+  setError: (error: string | null) => void;
+  clearError: () => void;
 }
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
   user: null,
   isAuthenticated: false,
-  isLoading: false,
+  isLoading: true,
   isInitialized: false,
   error: null,
+
+  initializeAuth: async () => {
+    const state = get();
+    
+    if (state.isInitialized) {
+      return;
+    }
+
+    set({ isLoading: true, error: null });
+    
+    try {
+      const user = await authApi.getCurrentUser(true);
+      
+      if (user) {
+        set({
+          user,
+          isAuthenticated: true,
+          isLoading: false,
+          isInitialized: true,
+          error: null
+        });
+      } else {
+        set({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          isInitialized: true,
+          error: null
+        });
+      }
+    } catch (error) {
+      console.error('Auth initialization failed:', error);
+      
+      try {
+        await authApi.clearAuthCookies();
+      } catch {
+      }
+      
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        isInitialized: true,
+        error: null
+      });
+      
+    }
+  },
 
   login: async (credentials: LoginCredentials) => {
     set({ isLoading: true, error: null });
@@ -38,16 +85,19 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         isLoading: false,
         error: null,
       });
-
+  
       const returnUrl = authApi.getReturnUrl();
-      if (returnUrl) {
-        authApi.clearReturnUrl();
-        window.location.href = returnUrl;
-      } else {
-        window.location.href = '/';
-      }
+      authApi.clearReturnUrl();
+      
+      return returnUrl || '/';
     } catch (error) {
-      await get().clearAuth(error instanceof Error ? error.message : 'Login failed');
+      const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: errorMessage
+      });
       throw error;
     }
   },
@@ -64,16 +114,19 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         isLoading: false,
         error: null,
       });
-
+  
       const returnUrl = authApi.getReturnUrl();
-      if (returnUrl) {
-        authApi.clearReturnUrl();
-        window.location.href = returnUrl;
-      } else {
-        window.location.href = '/';
-      }
+      authApi.clearReturnUrl();
+      
+      return returnUrl || '/';
     } catch (error) {
-      await get().clearAuth(error instanceof Error ? error.message : 'Signup failed', true);
+      const errorMessage = error instanceof Error ? error.message : 'Signup failed';
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: errorMessage
+      });
       throw error;
     }
   },
@@ -84,126 +137,28 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     try {
       await authApi.logout();
     } catch (error) {
-      console.error('Logout API call failed:', error);
+      console.error('Logout failed:', error);
     } finally {
-      await get().clearAuth(null, true);
-      window.location.href = '/';
-    }
-  },
-
-  checkAuth: async () => {
-    if (get().isLoading) return false;
-    
-    set({ isLoading: true });
-    
-    try {
-      const user = await authApi.getCurrentUser();
-      
-      if (user) {
-        set({
-          user,
-          isAuthenticated: true,
-          isLoading: false,
-          isInitialized: true,
-        });
-        return true;
-      } else {
-        await get().clearAuth(null, true);
-        return false;
-      }
-    } catch (error) {
-      await get().clearAuth(null, true);
-      return false;
-    }
-  },
-
-  silentLogout: async () => {
-    try {
-      await authApi.logout();
-    } catch (error) {
-      console.error('Silent logout failed:', error);
-    }
-    await get().clearAuth(null, true);
-  },
-
-  initializeAuth: async () => {
-    const state = get();
-    if (state.isInitialized || state.isLoading) {
-      console.log('initializeAuth: Already initialized or loading, skipping');
-      return;
-    }
-
-    console.log('initializeAuth: Starting initialization...');
-    set({ isLoading: true });
-    
-    const storedUser = authApi.getStoredUser();
-    console.log('initializeAuth: Has stored user:', !!storedUser);
-    
-    if (storedUser) {
-      console.log('initializeAuth: Using stored user:', storedUser.email);
       set({
-        user: storedUser,
-        isAuthenticated: true,
+        user: null,
+        isAuthenticated: false,
         isLoading: false,
-        isInitialized: true,
+        error: null
       });
       
-      authApi.getCurrentUser().then(serverUser => {
-        if (!serverUser) {
-          console.log('initializeAuth: User no longer authenticated, clearing state');
-          set({
-            user: null,
-            isAuthenticated: false,
-          });
-          authApi.clearUser();
-        } else if (serverUser.id !== storedUser.id) {
-          console.log('initializeAuth: Server user different, updating');
-          set({
-            user: serverUser,
-            isAuthenticated: true,
-          });
-        }
-      }).catch(() => {
-        console.debug('initializeAuth: Background verification failed - keeping current state');
-      });
-    } else {
-      console.log('initializeAuth: No stored user, attempting to fetch from server...');
+      authApi.clearUser();
       
-      try {
-        const user = await authApi.getCurrentUser();
-        console.log('initializeAuth: Fetched user:', user ? user.email : 'null');
-        
-        set({
-          user: user,
-          isAuthenticated: !!user,
-          isLoading: false,
-          isInitialized: true,
-        });
-      } catch (error) {
-        console.error('initializeAuth: Failed to fetch user:', error);
-        set({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-          isInitialized: true,
-        });
-      }
     }
   },
 
-  clearAuth: async (errorMessage: string | null, isInitialized?: boolean) => {
+  clearAuth: () => {
     authApi.clearUser();
     set({
-      error: errorMessage,
       user: null,
       isAuthenticated: false,
       isLoading: false,
-      isInitialized: isInitialized ?? get().isInitialized,
+      error: null
     });
-  },
-
-  clearError: () => {
-    set({ error: null });
   },
 
   setUser: (user: User | null) => {
@@ -212,16 +167,22 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       set({
         user,
         isAuthenticated: true,
-        error: null,
-        isInitialized: true,
+        error: null
       });
     } else {
       authApi.clearUser();
       set({
         user: null,
-        isAuthenticated: false,
-        isInitialized: true,
+        isAuthenticated: false
       });
     }
   },
+
+  setError: (error: string | null) => {
+    set({ error });
+  },
+
+  clearError: () => {
+    set({ error: null });
+  }
 }));

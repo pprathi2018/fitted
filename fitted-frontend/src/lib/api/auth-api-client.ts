@@ -44,25 +44,35 @@ class AuthApiService {
     }
   }
 
-  async getCurrentUser(): Promise<User | null> {
+  async getCurrentUser(isInitialCheck: boolean = false): Promise<User | null> {
     try {
-      console.log('getCurrentUser: Fetching user from API...');
-      
-      const user = await apiClient.get<User>(API_ENDPOINTS.ME, { skipRetry: false });
+      const user = await apiClient.get<User>(API_ENDPOINTS.ME, { 
+        skipRetry: false,
+        skipAuthFailureCallback: isInitialCheck
+      });
       
       if (user && user.id) {
-        console.log('getCurrentUser: User fetched successfully:', user.email);
         this.storeUser(user);
         return user;
       }
       
-      console.log('getCurrentUser: No user returned from API');
       this.clearUser();
       return null;
     } catch (error) {
-      console.error('getCurrentUser: Failed to fetch user:', error);
+      console.error('Failed to fetch current user:', error);
       this.clearUser();
       return null;
+    }
+  }
+
+  async clearAuthCookies(): Promise<void> {
+    try {
+      await apiClient.post('/api/auth/clear-cookies', {}, { 
+        skipAuth: true, 
+        skipRetry: true 
+      });
+    } catch (error) {
+      console.error('Failed to clear auth cookies:', error);
     }
   }
 
@@ -101,6 +111,12 @@ class AuthApiService {
   clearReturnUrl(): void {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(AUTH_STORAGE_KEYS.RETURN_URL);
+    }
+  }
+
+  setReturnUrl(url: string): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(AUTH_STORAGE_KEYS.RETURN_URL, url);
     }
   }
 }

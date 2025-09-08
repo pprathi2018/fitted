@@ -41,5 +41,6 @@ export interface AuthState {
 export interface ApiRequestConfig extends RequestInit {
   skipAuth?: boolean;
   skipRetry?: boolean;
+  skipAuthFailureCallback?: boolean;
   _retryCount?: number;
 }

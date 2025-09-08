@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { Button } from '@/components/ui/button';
@@ -8,8 +9,10 @@ import { FormInput } from '@/components/ui/form-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { fittedButton } from '@/lib/styles';
 import { cn } from '@/lib/utils';
+import { authApi } from '@/lib/api/auth-api-client';
 
 export default function LoginForm() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -26,7 +29,11 @@ export default function LoginForm() {
     e.preventDefault();
     
     try {
-      await login({ email, password });
+      const redirectUrl = await login({ email, password });
+
+      authApi.clearReturnUrl();
+      
+      router.replace(redirectUrl || '/');
     } catch (error) {
       console.error('Login failed:', error);
     }

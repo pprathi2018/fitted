@@ -1,20 +1,27 @@
-import { API_ENDPOINTS, AUTH_ERROR_MESSAGES, AUTH_ROUTES, PUBLIC_ROUTES } from '@/lib/auth/constants';
+import { API_ENDPOINTS, AUTH_ERROR_MESSAGES } from '@/lib/auth/constants';
 import { ApiRequestConfig } from '@/lib/auth/types';
+
+type AuthFailureCallback = () => void;
 
 class ApiClient {
   private baseURL: string;
   private refreshPromise: Promise<boolean> | null = null;
   private maxRetries = 1;
+  private authFailureCallback: AuthFailureCallback | null = null;
   
   constructor() {
     this.baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+  }
+
+  setAuthFailureCallback(callback: AuthFailureCallback) {
+    this.authFailureCallback = callback;
   }
 
   async request<T = any>(
     endpoint: string,
     config: ApiRequestConfig = {}
   ): Promise<T> {
-    const { skipAuth = false, skipRetry = false, _retryCount = 0, ...fetchConfig } = config;
+    const { skipAuth = false, skipRetry = false, skipAuthFailureCallback = false, _retryCount = 0, ...fetchConfig } = config;
 
     const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`;
 
@@ -45,9 +52,16 @@ class ApiClient {
             _retryCount: _retryCount + 1,
           });
         } else {
-          this.handleAuthFailure();
+          if (!skipAuthFailureCallback) {
+            this.handleAuthFailure();
+          }
           throw new Error(AUTH_ERROR_MESSAGES.TOKEN_REFRESH_FAILED);
         }
+      }
+
+      if (response.status === 401 && !skipAuth && !skipAuthFailureCallback) {
+        this.handleAuthFailure();
+        throw new Error(AUTH_ERROR_MESSAGES.UNAUTHORIZED);
       }
 
       if (!response.ok) {
@@ -91,22 +105,7 @@ class ApiClient {
         cache: 'no-store',
       });
 
-      if (response.ok) {
-        return true;
-      }
-
-      if (response.status === 401 || response.status === 403) {
-        try {
-          await fetch(`${this.baseURL}${API_ENDPOINTS.LOGOUT}`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-          });
-        } catch {
-        }
-      }
-
-      return false;
+      return response.ok;
     } catch (error) {
       console.error('Token refresh failed:', error);
       return false;
@@ -114,16 +113,8 @@ class ApiClient {
   }
 
   private handleAuthFailure(): void {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('fitted-user');
-      
-      const currentPath = window.location.pathname;
-      const publicPaths = [...AUTH_ROUTES, ...PUBLIC_ROUTES] as String[];
-      
-      if (!publicPaths.includes(currentPath)) {
-        localStorage.setItem('fitted-return-url', currentPath);
-        window.location.href = '/login';
-      }
+    if (this.authFailureCallback) {
+      this.authFailureCallback();
     }
   }
 

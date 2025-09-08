@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Mail, Lock, User, AlertCircle, Eye, EyeOff, Check } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { fittedButton } from '@/lib/styles';
 import { cn } from '@/lib/utils';
 
 export default function SignupForm() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',
     firstName: '',
@@ -42,7 +44,8 @@ export default function SignupForm() {
     }
 
     try {
-      await signup(formData);
+      const redirectUrl = await signup(formData);
+      router.push(redirectUrl);
     } catch (error) {
       console.error('Signup failed:', error);
     }
