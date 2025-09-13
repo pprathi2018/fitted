@@ -27,9 +27,9 @@ export const AUTH_ERROR_MESSAGES = {
 } as const;
 
 export const API_ENDPOINTS = {
-  LOGIN: '/api/auth/login',
-  SIGNUP: '/api/auth/signup',
-  LOGOUT: '/api/auth/logout',
-  REFRESH: '/api/auth/refresh',
-  ME: '/api/auth/me',
+  LOGIN: '/api/v1/auth/login',
+  SIGNUP: '/api/v1/auth/signup',
+  LOGOUT: '/api/v1/auth/logout',
+  REFRESH: '/api/v1/auth/refresh',
+  ME: '/api/v1/auth/me',
 } as const;

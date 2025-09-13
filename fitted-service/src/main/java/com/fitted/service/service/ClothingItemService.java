@@ -2,6 +2,9 @@ package com.fitted.service.service;
 
 import com.fitted.service.dto.ClothingItemResponse;
 import com.fitted.service.dto.CreateClothingItemRequest;
+import com.fitted.service.dto.SearchClothingItemRequest;
+import com.fitted.service.dto.SearchClothingItemResponse;
+import com.fitted.service.dto.search.SortOrder;
 import com.fitted.service.exception.InternalServerException;
 import com.fitted.service.exception.ResourceNotFoundException;
 import com.fitted.service.exception.ValidationException;
@@ -9,9 +12,15 @@ import com.fitted.service.exception.s3.S3FileUploadServerException;
 import com.fitted.service.exception.s3.S3FileUploadValidationException;
 import com.fitted.service.model.ClothingItem;
 import com.fitted.service.repository.ClothingItemRepository;
+import com.fitted.service.repository.ClothingItemSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.apache.tika.Tika;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -122,6 +131,33 @@ public class ClothingItemService {
                 .build();
     }
 
+    public SearchClothingItemResponse searchClothingItems(SearchClothingItemRequest request) {
+        log.info("Started search clothing items request");
+        Sort sort = getSortOrderFromSearchRequest(request.getSort()).equals(SortOrder.ASCENDING) ?
+                Sort.by(getSortByFromSearchRequest(request.getSort())).ascending() :
+                Sort.by(getSortByFromSearchRequest(request.getSort())).descending();
+        Pageable pageable = PageRequest.of(request.getPage(), request.getMaxSize(), sort);
+        Specification<ClothingItem> spec = ClothingItemSpecification.buildClothingItemSpec(request.getFilter(), request.getSearch());
+        Page<ClothingItem> clothingItemPage = clothingItemRepository.findAll(spec, pageable);
+        log.info("Search clothing items was successful. Total items returned: {}", clothingItemPage.getTotalElements());
+        return SearchClothingItemResponse.builder()
+                .items(clothingItemPage.getContent().stream().map(clothingItem ->
+                        ClothingItemResponse.builder()
+                                .id(clothingItem.getId())
+                                .name(clothingItem.getName())
+                                .type(clothingItem.getType())
+                                .originalImageUrl(clothingItem.getOriginalImageUrl())
+                                .modifiedImageUrl(clothingItem.getModifiedImageUrl())
+                                .color(clothingItem.getColor())
+                                .createdAt(clothingItem.getCreatedAt())
+                                .userId(clothingItem.getUser().getId().toString())
+                                .build())
+                        .toList())
+                .totalCount(clothingItemPage.getTotalElements())
+                .hasNext(clothingItemPage.hasNext())
+                .build();
+    }
+
     @Transactional
     public void deleteClothingItem(String clothingItemId, UUID userId) {
         log.info("Started delete clothing item request: clothingItemId={}", clothingItemId);
@@ -134,6 +170,8 @@ public class ClothingItemService {
 
         cleanupS3(clothingItem.getOriginalImageUrl(), clothingItem.getModifiedImageUrl());
     }
+
+    // PRIVATE METHODS
 
     private void cleanupS3(String originalItemS3Url, String modifiedItemS3Url) {
         if (originalItemS3Url != null) {
@@ -194,5 +232,21 @@ public class ClothingItemService {
             return ".jpg";
         }
         return fileName.substring(fileName.lastIndexOf("."));
+    }
+
+    private String getSortByFromSearchRequest(com.fitted.service.dto.search.Sort sortRequest) {
+        return Objects.nonNull(sortRequest) ?
+                Objects.nonNull(sortRequest.getSortBy()) ?
+                        sortRequest.getSortBy() :
+                        "createdAt" :
+                "createdAt";
+    }
+
+    private SortOrder getSortOrderFromSearchRequest(com.fitted.service.dto.search.Sort sortRequest) {
+        return Objects.nonNull(sortRequest) ?
+                Objects.nonNull(sortRequest.getSortOrder()) ?
+                        sortRequest.getSortOrder() :
+                        SortOrder.DESCENDING :
+                SortOrder.DESCENDING;
     }
 }

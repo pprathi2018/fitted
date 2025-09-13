@@ -25,10 +25,15 @@ class ApiClient {
 
     const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`;
 
+    const isFormData = fetchConfig.body instanceof FormData;
+
     const headers: HeadersInit = {
-      'Content-Type': 'application/json',
       ...fetchConfig.headers,
     };
+
+    if (!isFormData) {
+      (headers as any)['Content-Type'] = 'application/json';
+    }
 
     try {
       const response = await fetch(url, {

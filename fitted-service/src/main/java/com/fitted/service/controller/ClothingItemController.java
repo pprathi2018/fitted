@@ -3,6 +3,8 @@ package com.fitted.service.controller;
 import com.fitted.service.auth.model.UserPrincipal;
 import com.fitted.service.dto.ClothingItemResponse;
 import com.fitted.service.dto.CreateClothingItemRequest;
+import com.fitted.service.dto.SearchClothingItemRequest;
+import com.fitted.service.dto.SearchClothingItemResponse;
 import com.fitted.service.model.ClothingType;
 import com.fitted.service.service.ClothingItemService;
 import jakarta.validation.constraints.NotBlank;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,7 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Log4j2
 @RestController
 @CrossOrigin(origins = "*")
-@RequestMapping("/api")
+@RequestMapping("/api/v1")
 public class ClothingItemController {
 
     @Autowired
@@ -57,6 +60,18 @@ public class ClothingItemController {
         log.info("Successfully saved clothing item with name: {}, id: {}", response.getName(), response.getId());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping(value = "/search-clothing-items")
+    public ResponseEntity<SearchClothingItemResponse> searchClothingItems(@RequestBody SearchClothingItemRequest request,
+                                                                          @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        log.info("Received SearchClothingItems request");
+
+        SearchClothingItemResponse response = clothingItemService.searchClothingItems(request);
+
+        log.info("Successfully searched clothing items. Total items matched: {}", response.getTotalCount());
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping(value = "/clothing-items")

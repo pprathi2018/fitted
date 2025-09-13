@@ -2,16 +2,17 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { Upload, X, Check, AlertCircle, RefreshCw, Plus } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
 import { ClothingItem } from '@/types/clothing';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { clothingApi } from '@/lib/api/clothing-item-api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { fittedButton } from '@/lib/styles';
 import { cn } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 const CLOTHING_CATEGORIES = [
   { value: 'top', label: 'Top' },
@@ -25,12 +26,15 @@ const CLOTHING_CATEGORIES = [
 const ImageUpload = () => {
   const [dragActive, setDragActive] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
+  const [processedImageBlob, setProcessedImageBlob] = useState<Blob | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<ClothingItem['category']>('top');
   const [itemName, setItemName] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [clothingItems, setClothingItems] = useLocalStorage<ClothingItem[]>('clothing-items', []);
+  const [isSaving, setIsSaving] = useState(false);
   
   const [processingError, setProcessingError] = useState(false);
+  const [savingError, setSavingError] = useState<string | null>(null);
   const [lastFailedFile, setLastFailedFile] = useState<File | null>(null);
 
   useEffect(() => {
@@ -62,6 +66,7 @@ const ImageUpload = () => {
       }
 
       const blob = await response.blob();
+      setProcessedImageBlob(blob);
       return blobToBase64(blob);
     } catch (error) {
       throw error;
@@ -80,6 +85,9 @@ const ImageUpload = () => {
   const processImage = useCallback((file: File) => {
     setIsProcessing(true);
     setProcessingError(false);
+    setSavingError(null);
+
+    setOriginalFile(file);
 
     removeBackground(file)
     .then((url) => {
@@ -141,28 +149,56 @@ const ImageUpload = () => {
     setProcessingError(false);
     setLastFailedFile(null);
     setUploadedImage(null);
+    setOriginalFile(null);
+    setProcessedImageBlob(null);
+    setSavingError(null);
   };
 
-  const saveToCloset = () => {
-    if (!uploadedImage || !itemName.trim()) return;
+  const saveToCloset = async () => {
+    if (!uploadedImage || !itemName.trim() || !originalFile || !processedImageBlob) return;
 
-    const newItem: ClothingItem = {
-      id: uuidv4(),
-      name: itemName.trim(),
-      image: uploadedImage,
-      category: selectedCategory,
-      uploadedAt: new Date(),
-    };
+    setIsSaving(true);
+    setSavingError(null);
 
-    setClothingItems([...clothingItems, newItem]);
-    resetForm();
+    try {
+      const processedFile = new File(
+        [processedImageBlob], 
+        `processed_${originalFile.name}`,
+        { type: processedImageBlob.type || 'image/png' }
+      );
+
+      const response = await clothingApi.createClothingItem({
+        name: itemName.trim(),
+        type: selectedCategory,
+        originalImageFile: originalFile,
+        modifiedImageFile: processedFile,
+        color: undefined,
+      });
+
+      console.log('Clothing item saved successfully:', response);
+      
+      toast.success(`${itemName} saved to your closet!`);
+      
+      resetForm();
+    } catch (error) {
+      console.error('Failed to save clothing item:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save clothing item';
+      setSavingError(errorMessage);
+      
+      toast.error(errorMessage);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const resetForm = () => {
     setUploadedImage(null);
+    setOriginalFile(null);
+    setProcessedImageBlob(null);
     setItemName('');
     setProcessingError(false);
     setLastFailedFile(null);
+    setSavingError(null);
   };
 
   return (
@@ -248,6 +284,13 @@ const ImageUpload = () => {
               />
             </div>
             
+            {savingError && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{savingError}</AlertDescription>
+              </Alert>
+            )}
+            
             <div className="space-y-4">
               <div>
                 <Label htmlFor="item-name">Item Name</Label>
@@ -258,12 +301,17 @@ const ImageUpload = () => {
                   onChange={(e) => setItemName(e.target.value)}
                   placeholder="e.g., Blue Denim Jacket"
                   className="mt-1"
+                  disabled={isSaving}
                 />
               </div>
               
               <div>
                 <Label htmlFor="category">Category</Label>
-                <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as ClothingItem['category'])}>
+                <Select 
+                  value={selectedCategory} 
+                  onValueChange={(value) => setSelectedCategory(value as ClothingItem['category'])}
+                  disabled={isSaving}
+                >
                   <SelectTrigger id="category" className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
@@ -280,6 +328,7 @@ const ImageUpload = () => {
               <div className="flex gap-3 pt-2">
                 <Button 
                   onClick={resetForm}
+                  disabled={isSaving}
                   className={cn(fittedButton({ variant: "danger", size: "md" }), "flex-1")}
                 >
                   <X className="h-4 w-4 mr-2" />
@@ -288,11 +337,20 @@ const ImageUpload = () => {
                 
                 <Button
                   onClick={saveToCloset}
-                  disabled={!itemName.trim()}
+                  disabled={!itemName.trim() || isSaving}
                   className={cn(fittedButton({ variant: "primary", size: "md" }), "flex-1")}
                 >
-                  <Check className="h-4 w-4 mr-2" />
-                  Save to Closet
+                  {isSaving ? (
+                    <>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white mr-2" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Save to Closet
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
