@@ -12,13 +12,16 @@ import org.springframework.util.CollectionUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 public class ClothingItemSpecification {
 
     private static final List<String> SEARCHABLE_ATTRIBUTES = List.of("name");
 
-    public static Specification<ClothingItem> buildClothingItemSpec(Filter filter, Search search) {
+    public static Specification<ClothingItem> buildClothingItemSpec(Filter filter, Search search, UUID userId) {
         List<Specification<ClothingItem>> specs = new ArrayList<>();
+
+        specs.add(getUserFilterSpec(userId));
 
         if (Objects.nonNull(search)) {
             specs.add(getSpecFromSearch(search));
@@ -38,6 +41,11 @@ public class ClothingItemSpecification {
             }
         }
         return Specification.allOf(specs);
+    }
+
+    private static Specification<ClothingItem> getUserFilterSpec(UUID userId) {
+        return (root, query, cb) ->
+                cb.equal(root.get("user").get("id"), userId);
     }
 
     private static Specification<ClothingItem> getSpecFromFilterValue(String attribute, String value) {
@@ -67,7 +75,11 @@ public class ClothingItemSpecification {
         String searchText = Objects.nonNull(search.getSearchText()) ? search.getSearchText() : "";
         return (root, query, cb) -> {
             List<Predicate> searchPredicates = searchAttributes.stream().map(searchAttribute ->
-                    cb.like(root.get(searchAttribute), likePattern(searchText))).toList();
+                    cb.like(
+                            cb.lower(root.get(searchAttribute)),
+                            likePattern(searchText.toLowerCase())
+                    )
+            ).toList();
             return cb.or(searchPredicates.toArray(new Predicate[0]));
         };
     }

@@ -62,12 +62,12 @@ public class ClothingItemController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PostMapping(value = "/search-clothing-items")
+    @PostMapping(value = "/clothing-items/search")
     public ResponseEntity<SearchClothingItemResponse> searchClothingItems(@RequestBody SearchClothingItemRequest request,
                                                                           @AuthenticationPrincipal UserPrincipal userPrincipal) {
         log.info("Received SearchClothingItems request");
 
-        SearchClothingItemResponse response = clothingItemService.searchClothingItems(request);
+        SearchClothingItemResponse response = clothingItemService.searchClothingItems(request, userPrincipal.user().getId());
 
         log.info("Successfully searched clothing items. Total items matched: {}", response.getTotalCount());
 

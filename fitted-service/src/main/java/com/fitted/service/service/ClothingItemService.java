@@ -16,6 +16,7 @@ import com.fitted.service.repository.ClothingItemSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.apache.tika.Tika;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -38,6 +39,7 @@ public class ClothingItemService {
 
     private final ClothingItemRepository clothingItemRepository;
     private final S3FileUploadService s3FileUploadService;
+    private final CloudFrontUrlService cloudFrontUrlService;
 
     private final static String ORIGINAL_IMAGE_TYPE = "original";
     private final static String MODIFIED_IMAGE_TYPE = "modified";
@@ -75,13 +77,17 @@ public class ClothingItemService {
                 modifiedItemS3Url = s3FileUploadService.uploadImageFileSimple(modifiedImageFile, modifiedItemKey);
                 log.info("Saved modified image to S3: {}", modifiedItemS3Url);
 
+                String originalCloudFrontUrl = cloudFrontUrlService.convertS3ToCloudFrontUrl(originalItemS3Url);
+                String modifiedCloudFrontUrl = cloudFrontUrlService.convertS3ToCloudFrontUrl(modifiedItemS3Url);
+
+
                 log.info("Attempting to save clothing item to database: name={}", request.getName());
                 ClothingItem clothingItem = ClothingItem.builder()
                         .id(clothingItemId)
                         .name(request.getName())
                         .type(request.getType())
-                        .originalImageUrl(originalItemS3Url)
-                        .modifiedImageUrl(modifiedItemS3Url)
+                        .originalImageUrl(originalCloudFrontUrl)
+                        .modifiedImageUrl(modifiedCloudFrontUrl)
                         .color(request.getColor())
                         .user(request.getUser())
                         .build();
@@ -131,31 +137,47 @@ public class ClothingItemService {
                 .build();
     }
 
-    public SearchClothingItemResponse searchClothingItems(SearchClothingItemRequest request) {
+    public SearchClothingItemResponse searchClothingItems(SearchClothingItemRequest request, UUID userId) {
         log.info("Started search clothing items request");
+        if (request == null) {
+            request = SearchClothingItemRequest.builder()
+                    .page(0)
+                    .maxSize(50)
+                    .build();
+        }
+
         Sort sort = getSortOrderFromSearchRequest(request.getSort()).equals(SortOrder.ASCENDING) ?
                 Sort.by(getSortByFromSearchRequest(request.getSort())).ascending() :
                 Sort.by(getSortByFromSearchRequest(request.getSort())).descending();
         Pageable pageable = PageRequest.of(request.getPage(), request.getMaxSize(), sort);
-        Specification<ClothingItem> spec = ClothingItemSpecification.buildClothingItemSpec(request.getFilter(), request.getSearch());
-        Page<ClothingItem> clothingItemPage = clothingItemRepository.findAll(spec, pageable);
-        log.info("Search clothing items was successful. Total items returned: {}", clothingItemPage.getTotalElements());
-        return SearchClothingItemResponse.builder()
-                .items(clothingItemPage.getContent().stream().map(clothingItem ->
-                        ClothingItemResponse.builder()
-                                .id(clothingItem.getId())
-                                .name(clothingItem.getName())
-                                .type(clothingItem.getType())
-                                .originalImageUrl(clothingItem.getOriginalImageUrl())
-                                .modifiedImageUrl(clothingItem.getModifiedImageUrl())
-                                .color(clothingItem.getColor())
-                                .createdAt(clothingItem.getCreatedAt())
-                                .userId(clothingItem.getUser().getId().toString())
-                                .build())
-                        .toList())
-                .totalCount(clothingItemPage.getTotalElements())
-                .hasNext(clothingItemPage.hasNext())
-                .build();
+        Specification<ClothingItem> spec = ClothingItemSpecification.buildClothingItemSpec(request.getFilter(),
+                request.getSearch(), userId);
+        try {
+            Page<ClothingItem> clothingItemPage = clothingItemRepository.findAll(spec, pageable);
+            log.info("Search clothing items was successful. Total items returned: {}", clothingItemPage.getTotalElements());
+            return SearchClothingItemResponse.builder()
+                    .items(clothingItemPage.getContent().stream().map(clothingItem ->
+                                    ClothingItemResponse.builder()
+                                            .id(clothingItem.getId())
+                                            .name(clothingItem.getName())
+                                            .type(clothingItem.getType())
+                                            .originalImageUrl(clothingItem.getOriginalImageUrl())
+                                            .modifiedImageUrl(clothingItem.getModifiedImageUrl())
+                                            .color(clothingItem.getColor())
+                                            .createdAt(clothingItem.getCreatedAt())
+                                            .userId(clothingItem.getUser().getId().toString())
+                                            .build())
+                            .toList())
+                    .totalCount(clothingItemPage.getTotalElements())
+                    .hasNext(clothingItemPage.hasNext())
+                    .build();
+        } catch (DataAccessException e) {
+            log.error("Database error during clothing items search for user: {}", userId, e);
+            throw new InternalServerException("Failed to search clothing items", e);
+        } catch (Exception e) {
+            log.error("Unexpected error during clothing items search for user: {}", userId, e);
+            throw new InternalServerException("An error occurred while searching clothing items", e);
+        }
     }
 
     @Transactional
@@ -168,7 +190,14 @@ public class ClothingItemService {
 
         clothingItemRepository.deleteById(UUID.fromString(clothingItemId));
 
-        cleanupS3(clothingItem.getOriginalImageUrl(), clothingItem.getModifiedImageUrl());
+        String originalS3Url = cloudFrontUrlService.convertCloudFrontToS3Url(
+                clothingItem.getOriginalImageUrl()
+        );
+        String modifiedS3Url = cloudFrontUrlService.convertCloudFrontToS3Url(
+                clothingItem.getModifiedImageUrl()
+        );
+
+        cleanupS3(originalS3Url, modifiedS3Url);
     }
 
     // PRIVATE METHODS

@@ -184,7 +184,6 @@ const ImageUpload = () => {
       console.error('Failed to save clothing item:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to save clothing item';
       setSavingError(errorMessage);
-      
       toast.error(errorMessage);
     } finally {
       setIsSaving(false);

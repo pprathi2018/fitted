@@ -1,7 +1,7 @@
 'use client';
 
 import { Trash2 } from 'lucide-react';
-import { ClothingItem } from '@/types/clothing';
+import { ClothingItemResponse } from '@/lib/api/clothing-item-api-client';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,7 @@ import { fittedButton } from '@/lib/styles';
 import { cn } from '@/lib/utils';
 
 interface ClothingItemModalProps {
-  item: ClothingItem | null;
+  item: ClothingItemResponse | null;
   isOpen: boolean;
   onClose: () => void;
   onDelete: (itemId: string) => void;
@@ -23,8 +23,8 @@ const ClothingItemModal = ({ item, isOpen, onClose, onDelete }: ClothingItemModa
   if (!item) return null;
 
   const handleDeleteClick = () => {
-    onClose();
     onDelete(item.id);
+    onClose();
   };
 
   const categoryLabels: Record<string, string> = {
@@ -36,6 +36,9 @@ const ClothingItemModal = ({ item, isOpen, onClose, onDelete }: ClothingItemModa
     accessory: 'Accessory',
   };
 
+  const imageUrl = item.modified_image_url || item.original_image_url;
+  const categoryLabel = categoryLabels[item.type.toLowerCase()] || item.type;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
@@ -46,7 +49,7 @@ const ClothingItemModal = ({ item, isOpen, onClose, onDelete }: ClothingItemModa
         <div className="space-y-6">
           <div className="h-96 bg-fitted-gray-50 rounded-lg flex items-center justify-center p-8">
             <img
-              src={item.image}
+              src={imageUrl}
               alt={item.name}
               className="max-w-full max-h-full object-contain"
             />
@@ -54,15 +57,16 @@ const ClothingItemModal = ({ item, isOpen, onClose, onDelete }: ClothingItemModa
           
           <div className="space-y-4">
             <p className="text-lg text-fitted-gray-600 capitalize">
-              {categoryLabels[item.category] || item.category}
+              {categoryLabel}
             </p>
             
             <div className="pt-4 border-t space-y-3">
-              <InfoRow label="Type" value={categoryLabels[item.category]} />
+              <InfoRow label="Type" value={categoryLabel} />
               <InfoRow 
                 label="Added" 
-                value={new Date(item.uploadedAt).toLocaleDateString()} 
+                value={new Date(item.created_at).toLocaleDateString()} 
               />
+              {item.color && <InfoRow label="Color" value={item.color} />}
             </div>
             
             <Button
