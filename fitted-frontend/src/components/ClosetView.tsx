@@ -11,6 +11,7 @@ import FilterModal from './search/FilterModal';
 import GlobalLoader from './GlobalLoader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const ClosetView = () => {
   const {
@@ -94,6 +95,9 @@ const ClosetView = () => {
       if (selectedItem?.id === itemId) {
         handleCloseModal();
       }
+
+      toast.success(`Clothing item deleted from your closet!`);
+
     } catch (err) {
     }
   };

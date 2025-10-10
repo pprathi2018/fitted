@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { Rnd } from 'react-rnd';
-import { ClothingItem as ClothingItemType } from '@/types/clothing';
+import { ClothingItemResponse } from '@/lib/api/clothing-item-api-client';
 import { cn } from '@/lib/utils';
 
 interface CanvasImageProps {
-  item: ClothingItemType;
+  item: ClothingItemResponse;
   outfitItemId: string;
   isSelected: boolean;
   position: { x: number; y: number };
@@ -40,14 +40,14 @@ const CanvasImage = ({
   const handleResizeStop = (
     e: any,
     direction: any,
-    ref: HTMLElement,
-    delta: any,
-    position: any
+    ref: HTMLElement
   ) => {
     const width = parseInt(ref.style.width, 10);
     const height = parseInt(ref.style.height, 10);
     onResizeStop(outfitItemId, width, height);
   };
+
+  const imageUrl = item.modified_image_url || item.original_image_url;
 
   return (
     <Rnd
@@ -74,12 +74,12 @@ const CanvasImage = ({
       style={{ zIndex }}
       className={cn(
         "group cursor-move border-[3px] rounded-md transition-colors",
-        isSelected ? "border-fitted-blue-accent" : "border-transparent hover:border-blue-200"
+        isSelected ? "border-fitted-blue-accent rnd-item-selected" : "border-transparent hover:border-blue-200"
       )}
       onClick={handleClick}
     >
       <img
-        src={item.image}
+        src={imageUrl}
         alt={item.name}
         className="w-full h-full object-contain rounded select-none"
         draggable={false}

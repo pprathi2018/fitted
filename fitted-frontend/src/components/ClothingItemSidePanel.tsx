@@ -1,11 +1,11 @@
 'use client';
 
 import { useDraggable } from '@dnd-kit/core';
-import { ClothingItem as ClothingItemType } from '@/types/clothing';
+import { ClothingItemResponse } from '@/lib/api/clothing-item-api-client';
 import { cn } from '@/lib/utils';
 
 interface ClothingItemSidePanelProps {
-  item: ClothingItemType;
+  item: ClothingItemResponse;
   inOutfit?: boolean;
 }
 
@@ -13,7 +13,12 @@ const ClothingItemSidePanel = ({ item, inOutfit = false }: ClothingItemSidePanel
   const {attributes, listeners, setNodeRef, isDragging} = useDraggable({
     id: item.id,
     disabled: inOutfit,
+    data: {
+      item: item
+    }
   });
+
+  const imageUrl = item.modified_image_url || item.original_image_url;
 
   return (
     <div
@@ -26,13 +31,16 @@ const ClothingItemSidePanel = ({ item, inOutfit = false }: ClothingItemSidePanel
         isDragging && "opacity-30 border-fitted-blue-accent"
       )}
     >
-      <div className="h-full flex items-center justify-center">
-        <img
-          src={item.image}
-          alt={item.name}
-          className={cn("max-w-full max-h-full object-contain", inOutfit && "opacity-50")}
-          draggable={false}
-        />
+      <div className="h-full flex flex-col">
+        <div className="flex-1 flex items-center justify-center p-2">
+          <img
+            src={imageUrl}
+            alt={item.name}
+            className={cn("max-w-full max-h-full object-contain", inOutfit && "opacity-50")}
+            draggable={false}
+            loading="lazy"
+          />
+        </div>
       </div>
     </div>
   );
