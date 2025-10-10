@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Upload, X, Check, AlertCircle, RefreshCw, Plus } from 'lucide-react';
+import { Upload, X, Check, AlertCircle, RefreshCw, Plus, Sparkles } from 'lucide-react';
 import { ClothingItem } from '@/types/clothing';
 import { clothingApi } from '@/lib/api/clothing-item-api-client';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,8 @@ const ImageUpload = () => {
   const [processingError, setProcessingError] = useState(false);
   const [savingError, setSavingError] = useState<string | null>(null);
   const [lastFailedFile, setLastFailedFile] = useState<File | null>(null);
+  const [hasTriedAlternativeModel, setHasTriedAlternativeModel] = useState(false);
+  const [currentModelUsed, setCurrentModelUsed] = useState<'general' | 'cloth_seg'>('general');
 
   useEffect(() => {
     const warmupAPI = async () => {
@@ -49,9 +51,10 @@ const ImageUpload = () => {
     warmupAPI();
   }, []);
 
-  const removeBackground = async (file: File) : Promise<string> => {
+  const removeBackground = async (file: File, useClothSeg: boolean = false) : Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('use_cloth_seg', useClothSeg.toString());
 
     try {
       const response = await fetch('https://ncti3zqpfjz7ds3ug5sorxgffy0wcjhb.lambda-url.us-east-1.on.aws/api/remove-background', {
@@ -82,14 +85,15 @@ const ImageUpload = () => {
     });
   };
 
-  const processImage = useCallback((file: File) => {
+  const processImage = useCallback((file: File, useClothSeg: boolean = false) => {
     setIsProcessing(true);
     setProcessingError(false);
     setSavingError(null);
 
     setOriginalFile(file);
+    setCurrentModelUsed(useClothSeg ? 'cloth_seg' : 'general');
 
-    removeBackground(file)
+    removeBackground(file, useClothSeg)
     .then((url) => {
       setUploadedImage(url);
       setProcessingError(false);
@@ -145,6 +149,13 @@ const ImageUpload = () => {
     }
   };
 
+  const handleTryAlternativeModel = () => {
+    if (originalFile) {
+      setHasTriedAlternativeModel(true);
+      processImage(originalFile, true);
+    }
+  };
+
   const handleUploadNew = () => {
     setProcessingError(false);
     setLastFailedFile(null);
@@ -152,6 +163,8 @@ const ImageUpload = () => {
     setOriginalFile(null);
     setProcessedImageBlob(null);
     setSavingError(null);
+    setHasTriedAlternativeModel(false);
+    setCurrentModelUsed('general');
   };
 
   const saveToCloset = async () => {
@@ -198,6 +211,8 @@ const ImageUpload = () => {
     setProcessingError(false);
     setLastFailedFile(null);
     setSavingError(null);
+    setHasTriedAlternativeModel(false);
+    setCurrentModelUsed('general');
   };
 
   return (
@@ -230,7 +245,9 @@ const ImageUpload = () => {
             <div className="flex flex-col items-center">
               <div className="h-12 w-12 animate-spin rounded-full border-2 border-fitted-blue-accent border-t-transparent mb-4" />
               <p className="text-lg text-fitted-gray-600">Processing image...</p>
-              <p className="text-sm text-fitted-gray-500 mt-1">Removing background</p>
+              <p className="text-sm text-fitted-gray-500 mt-1">
+                {hasTriedAlternativeModel ? 'Trying alternative model...' : 'Removing background'}
+              </p>
             </div>
           ) : (
             <div className="flex flex-col items-center">
@@ -274,7 +291,17 @@ const ImageUpload = () => {
         </Card>
       ) : (
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-6 relative">
+            {isProcessing && (
+              <div className="absolute inset-0 bg-white/90 backdrop-blur-sm rounded-lg z-10 flex flex-col items-center justify-center">
+                <div className="h-12 w-12 animate-spin rounded-full border-2 border-fitted-blue-accent border-t-transparent mb-4" />
+                <p className="text-lg text-fitted-gray-600">Processing image...</p>
+                <p className="text-sm text-fitted-gray-500 mt-1">
+                  Trying alternative model...
+                </p>
+              </div>
+            )}
+            
             <div className="flex justify-center mb-6">
               <img
                 src={uploadedImage ?? undefined}
@@ -352,6 +379,19 @@ const ImageUpload = () => {
                   )}
                 </Button>
               </div>
+              
+              {/* Comment below out if w want to remove the option to try another model */}
+              {!hasTriedAlternativeModel && (
+                <div className="pt-2">
+                  <Button
+                    onClick={handleTryAlternativeModel}
+                    disabled={isSaving || isProcessing}
+                    className={cn(fittedButton({ variant: "secondary", size: "full" }))}
+                  >
+                    Not satisfied with the result? Try another model!
+                  </Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

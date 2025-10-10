@@ -72,29 +72,47 @@ class BackgroundRemover:
         
         return image
     
-    def _fix_cloth_seg_positioning(self, result_image: Image.Image, target_size: Tuple[int, int]) -> Image.Image:
-        if self.active_model != 'u2net_cloth_seg':
-            return result_image
+    def _crop_with_padding(self, image: Image.Image, padding: int = 30) -> Image.Image:
+        """
+        Crop the image to remove excess transparent space while maintaining fixed padding.
+        This creates a tight bounding box around the clothing item.
         
-        if result_image.mode != 'RGBA':
-            return result_image
-            
-        bbox = result_image.getbbox()
+        Args:
+            image: RGBA image with transparent background
+            padding: Fixed pixels of padding to add around the cropped content
+        
+        Returns:
+            Cropped image with padding
+        """
+        if image.mode != 'RGBA':
+            return image
+        
+        bbox = image.getbbox()
+        
         if not bbox:
-            return result_image
+            return image
         
-        cropped = result_image.crop(bbox)
-        centered_image = Image.new('RGBA', target_size, (0, 0, 0, 0))
+        left = max(0, bbox[0] - padding)
+        top = max(0, bbox[1] - padding)
+        right = min(image.width, bbox[2] + padding)
+        bottom = min(image.height, bbox[3] + padding)
         
-        paste_x = (target_size[0] - cropped.width) // 2
-        paste_y = (target_size[1] - cropped.height) // 2
-        paste_x = max(0, paste_x)
-        paste_y = max(0, paste_y)
+        cropped = image.crop((left, top, right, bottom))
         
-        centered_image.paste(cropped, (paste_x, paste_y), cropped)
-        return centered_image
+        min_size = 100
+        if cropped.width < min_size or cropped.height < min_size:
+            new_width = max(min_size, cropped.width)
+            new_height = max(min_size, cropped.height)
+            final_image = Image.new('RGBA', (new_width, new_height), (0, 0, 0, 0))
+            
+            paste_x = (new_width - cropped.width) // 2
+            paste_y = (new_height - cropped.height) // 2
+            final_image.paste(cropped, (paste_x, paste_y), cropped)
+            return final_image
+        
+        return cropped
     
-    def _remove_background_with_alpha_matting_and_fallback(self, image: Image.Image, original_size: Tuple[int, int]) -> Image.Image:
+    def _remove_background_with_alpha_matting_and_fallback(self, image: Image.Image) -> Image.Image:
         try:
             output_image = remove(
                 image,
@@ -105,16 +123,14 @@ class BackgroundRemover:
                 alpha_matting_erode_size=5
             )
             result = self._ensure_pil_image(output_image)
-            if self.use_cloth_seg:
-                result = self._fix_cloth_seg_positioning(result, original_size)
+            result = self._crop_with_padding(result)
             return result
         except Exception as e:
             logger.warning(f"Alpha matting failed with {self.active_model}: {e}. Using basic removal...")
             try:
                 output_image = remove(image, session=self.session)
                 result = self._ensure_pil_image(output_image)
-                if self.use_cloth_seg:
-                    result = self._fix_cloth_seg_positioning(result, original_size)
+                result = self._crop_with_padding(result)
                 return result
             except Exception as fallback_error:
                 raise BackgroundRemovalError(f"Background removal failed: {fallback_error}")
@@ -129,7 +145,6 @@ class BackgroundRemover:
       else:
           raise BackgroundRemovalError("Unknown output type from rembg.remove")
     
-    # Only used for manual testing
     def remove_background_from_file(self, input_path: str, output_path: str) -> None:
         try:
             logger.info(f"Processing file: {input_path}")
@@ -141,11 +156,10 @@ class BackgroundRemover:
             except Exception as e:
                 raise FileNotFoundError(f"Failed to load image: {e}")
             
-            original_size = input_image.size
             prepared_image = self._prepare_image_for_processing(input_image)
             
             logger.info(f"Removing background using {self.active_model}...")
-            result_image = self._remove_background_with_alpha_matting_and_fallback(prepared_image, original_size)
+            result_image = self._remove_background_with_alpha_matting_and_fallback(prepared_image)
             
             logger.info(f"Saving result to: {output_path}")
             result_image.save(output_path, format="PNG", optimize=True)
@@ -168,11 +182,10 @@ class BackgroundRemover:
                 logger.error(f"Failed to load image from bytes: {e}")
                 raise BackgroundRemovalError(f"Failed to load image from bytes: {e}")
             
-            original_size = input_image.size
             prepared_image = self._prepare_image_for_processing(input_image)
             
             logger.info(f"Removing background using {self.active_model}...")
-            result_image = self._remove_background_with_alpha_matting_and_fallback(prepared_image, original_size)
+            result_image = self._remove_background_with_alpha_matting_and_fallback(prepared_image)
             
             output_buffer = io.BytesIO()
             result_image.save(output_buffer, format="PNG", optimize=True)
