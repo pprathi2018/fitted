@@ -3,7 +3,7 @@ import os
 os.environ["U2NET_HOME"] = "/tmp/.u2net"
 
 import logging
-from typing import Optional, Tuple, Union
+from typing import Optional
 from PIL import Image, ImageEnhance
 from rembg import remove, new_session
 import io
@@ -34,8 +34,8 @@ class BackgroundRemover:
         except Exception as e:
             raise BackgroundRemovalError(f"Failed to initialize {model_name}: {e}")
     
-    # Only used for manual testing
     def _validate_input_file(self, input_path: str) -> None:
+        """Only used for manual testing"""
         if not os.path.exists(input_path):
             raise FileNotFoundError(f"Input image file does not exist: {input_path}")
         
@@ -48,13 +48,12 @@ class BackgroundRemover:
     
     def _prepare_image_for_processing(self, image: Image.Image) -> Image.Image:
         """
-        Steps:
-        1. Convert transparency to white background
-        2. Ensure RGB format
-        4. Slight contrast enhancement
+        Prepare image for background removal:
+        1. Convert transparency to white background if needed
+        2. Ensure RGB format for processing
+        3. Apply slight contrast enhancement for better results
         """
-        original_size = image.size
-        
+        # Handle images with existing transparency
         if image.mode in ('RGBA', 'LA'):
             white_background = Image.new('RGB', image.size, (255, 255, 255))
             if image.mode == 'RGBA':
@@ -72,47 +71,6 @@ class BackgroundRemover:
         
         return image
     
-    def _crop_and_center_with_padding(self, image: Image.Image, padding: int = 30) -> Image.Image:
-        if image.mode != 'RGBA':
-            return image
-        
-        bbox = image.getbbox()
-        
-        if not bbox:
-            logger.warning("Image is completely transparent")
-            return image
-        
-        left, top, right, bottom = bbox
-        
-        content_width = right - left
-        content_height = bottom - top
-        
-        new_width = content_width + (padding * 2)
-        new_height = content_height + (padding * 2)
-
-        new_image = Image.new('RGBA', (new_width, new_height), (0, 0, 0, 0))
-        
-        content = image.crop(bbox)
-        
-        paste_x = padding
-        paste_y = padding
-        new_image.paste(content, (paste_x, paste_y), content)
-        
-        logger.info(f"Original size: {image.size}, Content bounds: {bbox}, Final size: {new_image.size}")
-        
-        min_size = 100
-        if new_image.width < min_size or new_image.height < min_size:
-            final_width = max(min_size, new_image.width)
-            final_height = max(min_size, new_image.height)
-            final_image = Image.new('RGBA', (final_width, final_height), (0, 0, 0, 0))
-            
-            paste_x = (final_width - new_image.width) // 2
-            paste_y = (final_height - new_image.height) // 2
-            final_image.paste(new_image, (paste_x, paste_y), new_image)
-            return final_image
-        
-        return new_image
-    
     def _remove_background_with_alpha_matting_and_fallback(self, image: Image.Image) -> Image.Image:
         try:
             output_image = remove(
@@ -124,29 +82,26 @@ class BackgroundRemover:
                 alpha_matting_erode_size=5
             )
             result = self._ensure_pil_image(output_image)
-            result = self._crop_and_center_with_padding(result)
             return result
         except Exception as e:
             logger.warning(f"Alpha matting failed with {self.active_model}: {e}. Using basic removal...")
             try:
                 output_image = remove(image, session=self.session)
                 result = self._ensure_pil_image(output_image)
-                result = self._crop_and_center_with_padding(result)
                 return result
             except Exception as fallback_error:
                 raise BackgroundRemovalError(f"Background removal failed: {fallback_error}")
 
-    def _ensure_pil_image(self, output_image):
-      if isinstance(output_image, Image.Image):
-          return output_image
-      elif isinstance(output_image, bytes):
-          return Image.open(io.BytesIO(output_image))
-      elif isinstance(output_image, np.ndarray):
-          return Image.fromarray(output_image)
-      else:
-          raise BackgroundRemovalError("Unknown output type from rembg.remove")
+    def _ensure_pil_image(self, output_image) -> Image.Image:
+        if isinstance(output_image, Image.Image):
+            return output_image
+        elif isinstance(output_image, bytes):
+            return Image.open(io.BytesIO(output_image))
+        elif isinstance(output_image, np.ndarray):
+            return Image.fromarray(output_image)
+        else:
+            raise BackgroundRemovalError("Unknown output type from rembg.remove")
     
-    # Only used for manual testing
     def remove_background_from_file(self, input_path: str, output_path: str) -> None:
         try:
             logger.info(f"Processing file: {input_path}")
@@ -158,7 +113,6 @@ class BackgroundRemover:
             except Exception as e:
                 raise FileNotFoundError(f"Failed to load image: {e}")
             
-            original_size = input_image.size
             prepared_image = self._prepare_image_for_processing(input_image)
             
             logger.info(f"Removing background using {self.active_model}...")
@@ -167,7 +121,7 @@ class BackgroundRemover:
             logger.info(f"Saving result to: {output_path}")
             result_image.save(output_path, format="PNG", optimize=True)
             
-            logger.info( f"Background removal completed successfully using {self.active_model}")
+            logger.info(f"Background removal completed successfully using {self.active_model}")
 
         except FileNotFoundError as e:
             raise FileNotFoundError(e)     
@@ -185,7 +139,6 @@ class BackgroundRemover:
                 logger.error(f"Failed to load image from bytes: {e}")
                 raise BackgroundRemovalError(f"Failed to load image from bytes: {e}")
             
-            original_size = input_image.size
             prepared_image = self._prepare_image_for_processing(input_image)
             
             logger.info(f"Removing background using {self.active_model}...")
@@ -203,12 +156,12 @@ class BackgroundRemover:
             raise BackgroundRemovalError(f"Failed to process image from bytes: {e}")
 
 
-# local testing
+# Local testing
 if __name__ == "__main__":
     import sys
     
-    input_path = "./inputs/KithShirt.jpg"
-    output_path = "./outputs/test_clothing_no_bg.png"
+    input_path = "./inputs/test.jpg"
+    output_path = "./outputs/test_no_bg.png"
     use_cloth_seg = "--cloth-seg" in sys.argv
 
     logger.info("Starting background removal test...")
