@@ -89,7 +89,7 @@ class BackgroundRemover:
         
         new_width = content_width + (padding * 2)
         new_height = content_height + (padding * 2)
-        
+
         new_image = Image.new('RGBA', (new_width, new_height), (0, 0, 0, 0))
         
         content = image.crop(bbox)
@@ -124,7 +124,6 @@ class BackgroundRemover:
                 alpha_matting_erode_size=5
             )
             result = self._ensure_pil_image(output_image)
-            # Apply cropping and centering with padding to all images
             result = self._crop_and_center_with_padding(result)
             return result
         except Exception as e:
@@ -132,7 +131,6 @@ class BackgroundRemover:
             try:
                 output_image = remove(image, session=self.session)
                 result = self._ensure_pil_image(output_image)
-                # Apply cropping and centering even in fallback
                 result = self._crop_and_center_with_padding(result)
                 return result
             except Exception as fallback_error:
