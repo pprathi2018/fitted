@@ -133,6 +133,18 @@ public class S3FileUploadService {
         }
     }
 
+    public void cleanupS3(String... s3Urls) {
+        Arrays.stream(s3Urls).forEach(s3Url -> {
+            if (s3Url != null) {
+                try {
+                    this.deleteFile(s3Url);
+                } catch (Exception e) {
+                    log.error("Failed to cleanup image from S3, e");
+                }
+            }
+        });
+    }
+
     private String extractKeyFromS3Url(String s3Url) {
         if (s3Url == null || !s3Url.startsWith("s3://")) {
             return null;

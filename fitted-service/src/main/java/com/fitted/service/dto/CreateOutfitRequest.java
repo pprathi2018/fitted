@@ -1,0 +1,24 @@
+package com.fitted.service.dto;
+
+import com.fitted.service.auth.model.Users;
+import com.fitted.service.dto.outfit.OutfitClothingItemDTO;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class CreateOutfitRequest {
+    @NotNull(message = "Outfit image file is required.")
+    private MultipartFile outfitImageFile;
+    @NotNull(message = "At least one clothing item is required in outfit.")
+    private List<OutfitClothingItemDTO> clothingItems;
+    private Users user;
+}

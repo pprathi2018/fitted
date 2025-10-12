@@ -43,7 +43,7 @@ public class ClothingItemController {
             @RequestParam(value = "color", required = false) String color,
             @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
-        log.info("Received PostClothingItem request: name={}, type={}, originalImageFileSize={}, modifiedImageFileSize={}",
+        log.info("Received SaveClothingItem request: name={}, type={}, originalImageFileSize={}, modifiedImageFileSize={}",
                 name, type, originalImageFile.getSize(), modifiedImageFile.getSize());
 
         CreateClothingItemRequest request = CreateClothingItemRequest.builder()
