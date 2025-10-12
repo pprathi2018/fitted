@@ -21,4 +21,8 @@ public class OutfitClothingItemDTO {
 
     @JsonProperty("zIndex")
     private int zIndex;
+
+    // Fields from clothing item entity to include in Get Outfit response
+    @JsonProperty("modified_image_url")
+    private String modifiedImageUrl;
 }

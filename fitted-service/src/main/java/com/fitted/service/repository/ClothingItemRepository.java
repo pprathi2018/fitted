@@ -8,11 +8,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.lang.Nullable;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface ClothingItemRepository extends JpaRepository<ClothingItem, UUID>, JpaSpecificationExecutor<ClothingItem> {
     Optional<ClothingItem> findByIdAndUserId(UUID id, UUID userId);
+
+    List<ClothingItem> findByIdInAndUserId(List<UUID> ids, UUID userId);
 
     @Override
     Page<ClothingItem> findAll(@Nullable Specification<ClothingItem> spec, Pageable pageable);

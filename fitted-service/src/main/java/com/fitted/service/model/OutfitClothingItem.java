@@ -2,7 +2,10 @@ package com.fitted.service.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -29,6 +32,11 @@ public class OutfitClothingItem {
     private UUID outfitId;
     @Column(name = "clothing_item_id", nullable = false)
     private UUID clothingItemId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "clothing_item_id", insertable = false, updatable = false)
+    private ClothingItem clothingItem;
+
     @Column(name="position_x_percent")
     private float positionXPercent;
     @Column(name="position_y_percent")

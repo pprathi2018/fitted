@@ -13,6 +13,7 @@ import java.util.List;
 @Builder
 public class FilterItem {
     private String attribute;
+    // only one of value or valueList should be provided
     private String value;
     private List<String> valueList;
 }

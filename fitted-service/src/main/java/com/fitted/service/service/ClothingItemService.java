@@ -12,8 +12,9 @@ import com.fitted.service.exception.s3.S3FileUploadServerException;
 import com.fitted.service.exception.s3.S3FileUploadValidationException;
 import com.fitted.service.model.ClothingItem;
 import com.fitted.service.repository.ClothingItemRepository;
-import com.fitted.service.repository.ClothingItemSpecification;
+import com.fitted.service.specifications.ClothingItemSpecification;
 import com.fitted.service.utils.FileUtils;
+import com.fitted.service.utils.SearchUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.dao.DataAccessException;
@@ -26,7 +27,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -136,9 +136,9 @@ public class ClothingItemService {
                     .build();
         }
 
-        Sort sort = getSortOrderFromSearchRequest(request.getSort()).equals(SortOrder.ASCENDING) ?
-                Sort.by(getSortByFromSearchRequest(request.getSort())).ascending() :
-                Sort.by(getSortByFromSearchRequest(request.getSort())).descending();
+        Sort sort = SearchUtils.getSortOrderFromSearchRequest(request.getSort()).equals(SortOrder.ASCENDING) ?
+                Sort.by(SearchUtils.getSortByFromSearchRequest(request.getSort())).ascending() :
+                Sort.by(SearchUtils.getSortByFromSearchRequest(request.getSort())).descending();
         Pageable pageable = PageRequest.of(request.getPage(), request.getMaxSize(), sort);
         Specification<ClothingItem> spec = ClothingItemSpecification.buildClothingItemSpec(request.getFilter(),
                 request.getSearch(), userId);
@@ -188,23 +188,5 @@ public class ClothingItemService {
         );
 
         s3FileUploadService.cleanupS3(originalS3Url, modifiedS3Url);
-    }
-
-    // PRIVATE METHODS
-
-    private String getSortByFromSearchRequest(com.fitted.service.dto.search.Sort sortRequest) {
-        return Objects.nonNull(sortRequest) ?
-                Objects.nonNull(sortRequest.getSortBy()) ?
-                        sortRequest.getSortBy() :
-                        "createdAt" :
-                "createdAt";
-    }
-
-    private SortOrder getSortOrderFromSearchRequest(com.fitted.service.dto.search.Sort sortRequest) {
-        return Objects.nonNull(sortRequest) ?
-                Objects.nonNull(sortRequest.getSortOrder()) ?
-                        sortRequest.getSortOrder() :
-                        SortOrder.DESCENDING :
-                SortOrder.DESCENDING;
     }
 }

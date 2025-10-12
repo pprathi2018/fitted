@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fitted.service.auth.model.UserPrincipal;
 import com.fitted.service.dto.CreateOutfitRequest;
 import com.fitted.service.dto.OutfitResponse;
+import com.fitted.service.dto.SearchOutfitsRequest;
+import com.fitted.service.dto.SearchOutfitsResponse;
 import com.fitted.service.dto.outfit.OutfitClothingItemDTO;
 import com.fitted.service.exception.InternalServerException;
 import com.fitted.service.service.OutfitService;
@@ -16,7 +18,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -66,5 +70,31 @@ public class OutfitController {
         log.info("Successfully saved outfit with id: {}", response.getId());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping(value = "/outfits")
+    public ResponseEntity<OutfitResponse> getOutfit(
+            @RequestParam(name = "outfitId") String outfitId,
+            @AuthenticationPrincipal UserPrincipal userPrincipal
+    ) {
+        log.info("Received GetOutfit request: outfitId={}", outfitId);
+
+        OutfitResponse response = outfitService.getOutfit(outfitId, userPrincipal.user().getId());
+
+        log.info("Successfully retrieved outfit with id: {}", response.getId());
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @PostMapping(value = "/outfits/search")
+    public ResponseEntity<SearchOutfitsResponse> searchOutfits(@RequestBody SearchOutfitsRequest request,
+                                                               @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        log.info("Received SearchOutfits request");
+
+        SearchOutfitsResponse response = outfitService.searchOutfits(request, userPrincipal.user().getId());
+
+        log.info("Successfully searched outfits. Total items matched: {}", response.getTotalCount());
+
+        return ResponseEntity.ok(response);
     }
 }

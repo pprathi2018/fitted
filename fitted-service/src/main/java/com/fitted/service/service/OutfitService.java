@@ -2,24 +2,39 @@ package com.fitted.service.service;
 
 import com.fitted.service.dto.CreateOutfitRequest;
 import com.fitted.service.dto.OutfitResponse;
+import com.fitted.service.dto.SearchOutfitsRequest;
+import com.fitted.service.dto.SearchOutfitsResponse;
 import com.fitted.service.dto.outfit.OutfitClothingItemDTO;
+import com.fitted.service.dto.search.SortOrder;
 import com.fitted.service.exception.InternalServerException;
+import com.fitted.service.exception.ResourceNotFoundException;
 import com.fitted.service.exception.ValidationException;
 import com.fitted.service.exception.s3.S3FileUploadServerException;
 import com.fitted.service.exception.s3.S3FileUploadValidationException;
+import com.fitted.service.model.ClothingItem;
 import com.fitted.service.model.Outfit;
 import com.fitted.service.model.OutfitClothingItem;
+import com.fitted.service.repository.ClothingItemRepository;
 import com.fitted.service.repository.OutfitClothingItemRepository;
 import com.fitted.service.repository.OutfitRepository;
+import com.fitted.service.specifications.OutfitSpecification;
 import com.fitted.service.utils.FileUtils;
+import com.fitted.service.utils.SearchUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +42,7 @@ import java.util.UUID;
 public class OutfitService {
 
     private final OutfitRepository outfitRepository;
+    private final ClothingItemRepository clothingItemRepository;
     private final OutfitClothingItemRepository outfitClothingItemRepository;
     private final S3FileUploadService s3FileUploadService;
     private final CloudFrontUrlService cloudFrontUrlService;
@@ -35,6 +51,18 @@ public class OutfitService {
     public OutfitResponse saveOutfit(CreateOutfitRequest request) {
         log.info("Started save outfit request: num clothing items in outfit={}, user={}",
                 request.getClothingItems().size(), request.getUser().getId());
+
+        List<UUID> requestedItemIds = request.getClothingItems().stream()
+                .map(OutfitClothingItemDTO::getClothingItemId)
+                .collect(Collectors.toList());
+
+        List<ClothingItem> userClothingItems = clothingItemRepository.findByIdInAndUserId(
+                requestedItemIds, request.getUser().getId());
+
+        if (userClothingItems.size() != requestedItemIds.size()) {
+            throw new ValidationException("One or more clothing items do not belong to the user or do not exist");
+        }
+
         String outfitImageS3Url = null;
         try {
             MultipartFile outfitImageFile = FileUtils.validateFile(request.getOutfitImageFile());
@@ -103,6 +131,69 @@ public class OutfitService {
             log.error("Unexpected error during outfit save", e);
             s3FileUploadService.cleanupS3(outfitImageS3Url);
             throw new InternalServerException("Failed to save outfit", e);
+        }
+    }
+
+    public OutfitResponse getOutfit(String outfitId, UUID userId) {
+        log.info("Started get outfit request: outfitId={}", outfitId);
+        Outfit outfit = outfitRepository.findByIdAndUserId(UUID.fromString(outfitId), userId).orElseThrow(
+                () -> new ResourceNotFoundException(String.format("Outfit with id: %s not found.", outfitId))
+        );
+
+        List<OutfitClothingItem> outfitClothingItems = outfitClothingItemRepository.findByOutfitIdWithClothingItems(UUID.fromString(outfitId));
+
+        return OutfitResponse.builder()
+                .id(outfit.getId())
+                .outfitImageUrl(outfit.getOutfitImageUrl())
+                .clothingItems(outfitClothingItems.stream().map(outfitClothingItem ->
+                        OutfitClothingItemDTO.builder()
+                                .clothingItemId(outfitClothingItem.getClothingItemId())
+                                .positionXPercent(outfitClothingItem.getPositionXPercent())
+                                .positionYPercent(outfitClothingItem.getPositionYPercent())
+                                .widthPercent(outfitClothingItem.getWidthPercent())
+                                .heightPercent(outfitClothingItem.getHeightPercent())
+                                .zIndex(outfitClothingItem.getZIndex())
+                                // Fields from Clothing Item entity to include
+                                .modifiedImageUrl(outfitClothingItem.getClothingItem().getModifiedImageUrl())
+                                .build())
+                        .toList())
+                .build();
+    }
+
+    public SearchOutfitsResponse searchOutfits(SearchOutfitsRequest request, UUID userId) {
+        log.info("Started search outfits request.");
+        if (request == null) {
+            request = SearchOutfitsRequest.builder()
+                    .page(0)
+                    .maxSize(50)
+                    .build();
+        }
+
+        Sort sort = SearchUtils.getSortOrderFromSearchRequest(request.getSort()).equals(SortOrder.ASCENDING) ?
+                Sort.by(SearchUtils.getSortByFromSearchRequest(request.getSort())).ascending() :
+                Sort.by(SearchUtils.getSortByFromSearchRequest(request.getSort())).descending();
+        Pageable pageable = PageRequest.of(request.getPage(), request.getMaxSize(), sort);
+        Specification<Outfit> spec = OutfitSpecification.buildOutfitSpec(request.getFilter(),
+                request.getSearch(), userId);
+        try {
+            Page<Outfit> outfitPage = outfitRepository.findAll(spec, pageable);
+            log.info("Search outfits was successful. Total items returned: {}", outfitPage.getTotalElements());
+            return SearchOutfitsResponse.builder()
+                    .items(outfitPage.getContent().stream().map(outfit ->
+                            OutfitResponse.builder()
+                                    .id(outfit.getId())
+                                    .outfitImageUrl(outfit.getOutfitImageUrl())
+                                    .build())
+                            .toList())
+                    .totalCount(outfitPage.getTotalElements())
+                    .hasNext(outfitPage.hasNext())
+                    .build();
+        } catch (DataAccessException e) {
+            log.error("Database error during outfits search for user: {}", userId, e);
+            throw new InternalServerException("Failed to search outfits", e);
+        } catch (Exception e) {
+            log.error("Unexpected error during outfits search for user: {}", userId, e);
+            throw new InternalServerException("An error occurred while searching outfits", e);
         }
     }
 }
