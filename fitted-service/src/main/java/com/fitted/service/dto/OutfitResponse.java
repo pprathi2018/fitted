@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,4 +20,6 @@ public class OutfitResponse {
     @JsonProperty("outfit_image_url")
     private String outfitImageUrl;
     private List<OutfitClothingItemDTO> clothingItems;
+    private LocalDateTime createdAt;
+    private String userId;
 }

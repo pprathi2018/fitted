@@ -188,5 +188,7 @@ public class ClothingItemService {
         );
 
         s3FileUploadService.cleanupS3(originalS3Url, modifiedS3Url);
+
+        log.info("Completed delete clothing item: clothingItemId={}", clothingItem);
     }
 }

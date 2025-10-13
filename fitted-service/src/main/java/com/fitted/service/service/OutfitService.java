@@ -1,9 +1,11 @@
 package com.fitted.service.service;
 
+import com.fitted.service.auth.model.Users;
 import com.fitted.service.dto.CreateOutfitRequest;
 import com.fitted.service.dto.OutfitResponse;
 import com.fitted.service.dto.SearchOutfitsRequest;
 import com.fitted.service.dto.SearchOutfitsResponse;
+import com.fitted.service.dto.UpdateOutfitRequest;
 import com.fitted.service.dto.outfit.OutfitClothingItemDTO;
 import com.fitted.service.dto.search.SortOrder;
 import com.fitted.service.exception.InternalServerException;
@@ -31,6 +33,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.utils.Pair;
 
 import java.util.List;
 import java.util.UUID;
@@ -52,77 +55,20 @@ public class OutfitService {
         log.info("Started save outfit request: num clothing items in outfit={}, user={}",
                 request.getClothingItems().size(), request.getUser().getId());
 
-        List<UUID> requestedItemIds = request.getClothingItems().stream()
-                .map(OutfitClothingItemDTO::getClothingItemId)
-                .collect(Collectors.toList());
-
-        List<ClothingItem> userClothingItems = clothingItemRepository.findByIdInAndUserId(
-                requestedItemIds, request.getUser().getId());
-
-        if (userClothingItems.size() != requestedItemIds.size()) {
-            throw new ValidationException("One or more clothing items do not belong to the user or do not exist");
-        }
+        validateOutfitClothingItems(request.getClothingItems(), request.getUser());
 
         String outfitImageS3Url = null;
+
+        UUID outfitId = UUID.randomUUID();
+        String userId = request.getUser().getId().toString();
+
         try {
-            MultipartFile outfitImageFile = FileUtils.validateFile(request.getOutfitImageFile());
+            Pair<String, String> outfitImageUrls = uploadImageFileToS3(request.getOutfitImageFile(), outfitId, userId);
+            outfitImageS3Url = outfitImageUrls.left();
+            String outfitCloudFrontUrl = outfitImageUrls.right();
 
-            UUID outfitId = UUID.randomUUID();
-            String userId = request.getUser().getId().toString();
-
-            String outfitCloudFrontUrl;
-            try {
-                log.info("Attempting to save outfit image to S3: {}", outfitImageFile.getOriginalFilename());
-                String outfitItemKey = FileUtils.getOutfitItemFileKey(userId, outfitId.toString(),
-                        FileUtils.getFileExtension(outfitImageFile.getOriginalFilename()));
-                outfitImageS3Url = s3FileUploadService.uploadImageFileSimple(outfitImageFile, outfitItemKey);
-                log.info("Saved outfit image to S3: {}", outfitImageS3Url);
-
-                outfitCloudFrontUrl = cloudFrontUrlService.convertS3ToCloudFrontUrl(outfitImageS3Url);
-            } catch (Exception e) {
-                s3FileUploadService.cleanupS3(outfitImageS3Url);
-                throw e;
-            }
-
-            log.info("Attempting to save outfit: {} to database.", outfitId);
-            Outfit outfit = Outfit.builder()
-                    .id(outfitId)
-                    .outfitImageUrl(outfitCloudFrontUrl)
-                    .user(request.getUser())
-                    .build();
-            Outfit savedOutfit = outfitRepository.save(outfit);
-            log.info("Successfully saved outfit: {} to database.", outfitId);
-
-            log.info("Attempting to save {} outfit clothing items to database.", request.getClothingItems().size());
-            List<OutfitClothingItem> outfitClothingItemsToSave = request.getClothingItems().stream().map(outfitClothingItemDTO ->
-                    OutfitClothingItem.builder()
-                            .id(UUID.randomUUID())
-                        .outfitId(outfitId)
-                        .clothingItemId(outfitClothingItemDTO.getClothingItemId())
-                        .positionXPercent(outfitClothingItemDTO.getPositionXPercent())
-                        .positionYPercent(outfitClothingItemDTO.getPositionYPercent())
-                        .widthPercent(outfitClothingItemDTO.getWidthPercent())
-                        .heightPercent(outfitClothingItemDTO.getHeightPercent())
-                        .zIndex(outfitClothingItemDTO.getZIndex())
-                        .build())
-                    .toList();
-            List<OutfitClothingItem> savedOutfitClothingItems = outfitClothingItemRepository.saveAll(outfitClothingItemsToSave);
-            log.info("Saved {} outfit clothing items to database.", savedOutfitClothingItems.size());
-
-            return OutfitResponse.builder()
-                    .id(savedOutfit.getId())
-                    .outfitImageUrl(savedOutfit.getOutfitImageUrl())
-                    .clothingItems(savedOutfitClothingItems.stream().map(savedOutfitClothingItem ->
-                            OutfitClothingItemDTO.builder()
-                                    .clothingItemId(savedOutfitClothingItem.getClothingItemId())
-                                    .positionXPercent(savedOutfitClothingItem.getPositionXPercent())
-                                    .positionYPercent(savedOutfitClothingItem.getPositionYPercent())
-                                    .widthPercent(savedOutfitClothingItem.getWidthPercent())
-                                    .heightPercent(savedOutfitClothingItem.getHeightPercent())
-                                    .zIndex(savedOutfitClothingItem.getZIndex())
-                                    .build())
-                            .toList())
-                    .build();
+            return saveOutfitAndOutfitClothingItems(outfitId, request.getUser(),
+                    request.getClothingItems(), outfitCloudFrontUrl);
         } catch (S3FileUploadValidationException e) {
             throw new ValidationException(e.getMessage(), e);
         } catch (S3FileUploadServerException e) {
@@ -157,6 +103,8 @@ public class OutfitService {
                                 .modifiedImageUrl(outfitClothingItem.getClothingItem().getModifiedImageUrl())
                                 .build())
                         .toList())
+                .createdAt(outfit.getCreatedAt())
+                .userId(outfit.getUser().getId().toString())
                 .build();
     }
 
@@ -183,6 +131,8 @@ public class OutfitService {
                             OutfitResponse.builder()
                                     .id(outfit.getId())
                                     .outfitImageUrl(outfit.getOutfitImageUrl())
+                                    .createdAt(outfit.getCreatedAt())
+                                    .userId(outfit.getUser().getId().toString())
                                     .build())
                             .toList())
                     .totalCount(outfitPage.getTotalElements())
@@ -196,4 +146,140 @@ public class OutfitService {
             throw new InternalServerException("An error occurred while searching outfits", e);
         }
     }
+
+    @Transactional
+    public void deleteOutfit(String outfitId, UUID userId) {
+        log.info("Started delete outfit request: outfitId={}", outfitId);
+
+        Outfit outfit = outfitRepository.findByIdAndUserId(UUID.fromString(outfitId), userId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        String.format("Outfit with id: %s not found.", outfitId)));
+
+        outfitRepository.deleteById(UUID.fromString(outfitId));
+
+        String outfitS3Url = cloudFrontUrlService.convertCloudFrontToS3Url(
+                outfit.getOutfitImageUrl()
+        );
+
+        s3FileUploadService.cleanupS3(outfitS3Url);
+
+        log.info("Completed delete outfit: outfitId={}", outfitId);
+    }
+
+    @Transactional
+    public OutfitResponse updateOutfit(UpdateOutfitRequest request) {
+        log.info("Started update outfit request: outfitId={}, num clothing items in outfit={}, user={}",
+                request.getOutfitId(), request.getClothingItems().size(), request.getUser().getId());
+
+        validateOutfitClothingItems(request.getClothingItems(), request.getUser());
+        String outfitImageS3Url = null;
+
+        UUID outfitId = UUID.fromString(request.getOutfitId());
+        String userId = request.getUser().getId().toString();
+
+        OutfitResponse existingOutfit = getOutfit(outfitId.toString(), UUID.fromString(userId));
+
+        try {
+            Pair<String, String> outfitImageUrls = uploadImageFileToS3(request.getOutfitImageFile(), outfitId, userId);
+            outfitImageS3Url = outfitImageUrls.left();
+            String outfitCloudFrontUrl = outfitImageUrls.right();
+
+            // delete all existing outfit clothing items
+            List<UUID> existingClothingItemsInExistingOutfit = existingOutfit.getClothingItems().stream()
+                    .map(OutfitClothingItemDTO::getClothingItemId).toList();
+            outfitClothingItemRepository.deleteByOutfitIdAndClothingItemIdIn(outfitId, existingClothingItemsInExistingOutfit);
+
+            return saveOutfitAndOutfitClothingItems(outfitId, request.getUser(),
+                    request.getClothingItems(), outfitCloudFrontUrl);
+        } catch (S3FileUploadValidationException e) {
+            throw new ValidationException(e.getMessage(), e);
+        } catch (S3FileUploadServerException e) {
+            throw new InternalServerException("Internal server error while uploading image to S3", e);
+        } catch (Exception e) {
+            log.error("Unexpected error during outfit save", e);
+            s3FileUploadService.cleanupS3(outfitImageS3Url);
+            throw new InternalServerException("Failed to save outfit", e);
+        }
+    }
+
+    // PRIVATE METHODS
+
+    private void validateOutfitClothingItems(List<OutfitClothingItemDTO> clothingItems, Users user) {
+        List<UUID> requestedItemIds = clothingItems.stream()
+                .map(OutfitClothingItemDTO::getClothingItemId)
+                .collect(Collectors.toList());
+
+        List<ClothingItem> userClothingItems = clothingItemRepository.findByIdInAndUserId(
+                requestedItemIds, user.getId());
+
+        if (userClothingItems.size() != requestedItemIds.size()) {
+            throw new ValidationException("One or more clothing items do not belong to the user or do not exist");
+        }
+    }
+
+    private Pair<String, String> uploadImageFileToS3(MultipartFile imageFile, UUID objectId, String userId) {
+        MultipartFile outfitImageFile = FileUtils.validateFile(imageFile);
+
+        String outfitCloudFrontUrl;
+        String outfitImageS3Url = null;
+        try {
+            log.info("Attempting to save outfit image to S3: {}", outfitImageFile.getOriginalFilename());
+            String outfitItemKey = FileUtils.getOutfitItemFileKey(userId, objectId.toString(),
+                    FileUtils.getFileExtension(outfitImageFile.getOriginalFilename()));
+            outfitImageS3Url = s3FileUploadService.uploadImageFileSimple(outfitImageFile, outfitItemKey);
+            log.info("Saved outfit image to S3: {}", outfitImageS3Url);
+
+            outfitCloudFrontUrl = cloudFrontUrlService.convertS3ToCloudFrontUrl(outfitImageS3Url);
+        } catch (Exception e) {
+            s3FileUploadService.cleanupS3(outfitImageS3Url);
+            throw e;
+        }
+        return Pair.of(outfitImageS3Url, outfitCloudFrontUrl);
+    }
+
+    private OutfitResponse saveOutfitAndOutfitClothingItems(UUID outfitId, Users user, List<OutfitClothingItemDTO> clothingItems,
+                                                            String outfitCloudFrontUrl) {
+        log.info("Attempting to update outfit: {} in database.", outfitId);
+        Outfit outfit = Outfit.builder()
+                .id(outfitId)
+                .outfitImageUrl(outfitCloudFrontUrl)
+                .user(user)
+                .build();
+        Outfit savedOutfit = outfitRepository.save(outfit);
+        log.info("Successfully updated outfit: {} in database.", outfitId);
+
+        log.info("Attempting to save {} outfit clothing items to database.", clothingItems.size());
+        List<OutfitClothingItem> outfitClothingItemsToSave = clothingItems.stream().map(outfitClothingItemDTO ->
+                        OutfitClothingItem.builder()
+                                .id(UUID.randomUUID())
+                                .outfitId(outfitId)
+                                .clothingItemId(outfitClothingItemDTO.getClothingItemId())
+                                .positionXPercent(outfitClothingItemDTO.getPositionXPercent())
+                                .positionYPercent(outfitClothingItemDTO.getPositionYPercent())
+                                .widthPercent(outfitClothingItemDTO.getWidthPercent())
+                                .heightPercent(outfitClothingItemDTO.getHeightPercent())
+                                .zIndex(outfitClothingItemDTO.getZIndex())
+                                .build())
+                .toList();
+        List<OutfitClothingItem> savedOutfitClothingItems = outfitClothingItemRepository.saveAll(outfitClothingItemsToSave);
+        log.info("Saved {} outfit clothing items to database.", savedOutfitClothingItems.size());
+
+        return OutfitResponse.builder()
+                .id(savedOutfit.getId())
+                .outfitImageUrl(savedOutfit.getOutfitImageUrl())
+                .clothingItems(savedOutfitClothingItems.stream().map(savedOutfitClothingItem ->
+                                OutfitClothingItemDTO.builder()
+                                        .clothingItemId(savedOutfitClothingItem.getClothingItemId())
+                                        .positionXPercent(savedOutfitClothingItem.getPositionXPercent())
+                                        .positionYPercent(savedOutfitClothingItem.getPositionYPercent())
+                                        .widthPercent(savedOutfitClothingItem.getWidthPercent())
+                                        .heightPercent(savedOutfitClothingItem.getHeightPercent())
+                                        .zIndex(savedOutfitClothingItem.getZIndex())
+                                        .build())
+                        .toList())
+                .createdAt(savedOutfit.getCreatedAt())
+                .userId(savedOutfit.getUser().getId().toString())
+                .build();
+    }
+
 }
