@@ -43,8 +43,8 @@ const CanvasDropZone = ({
       ref={setNodeRef}
       id="canvas"
       className={cn(
-        "relative w-full h-full bg-white rounded-lg border-2 border-dashed transition-all",
-        isOver ? "border-fitted-blue-accent bg-fitted-blue-light" : "border-fitted-gray-300"
+        "relative w-full h-full rounded-lg border-2 border-dashed transition-all",
+        isOver ? "border-fitted-blue-accent bg-fitted-blue-light" : "border-fitted-gray-300 bg-transparent"
       )}
       onClick={onCanvasClick}
     >

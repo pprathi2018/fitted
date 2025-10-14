@@ -1,37 +1,57 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useClothingItems } from '@/hooks/useClothingItems';
+import { useOutfits } from '@/hooks/useOutfits';
 import { ClothingItemResponse, ClothingType } from '@/lib/api/clothing-item-api-client';
+import { OutfitResponse, outfitApi } from '@/lib/api/outfit-api-client';
 import ClothingItemCard from './ClothingItemCard';
 import ClothingItemModal from './ClothingItemModal';
+import OutfitCard from './OutfitCard';
+import OutfitModal from './OutfitModal';
 import SearchBar from './search/SearchBar';
 import FilterButton from './search/FilterButton';
 import FilterModal from './search/FilterModal';
 import GlobalLoader from './GlobalLoader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import toast from 'react-hot-toast';
 
 const ClosetView = () => {
+  const router = useRouter();
+  
   const {
-    displayedItems,
-    isInitialLoading,
+    displayedItems: clothingItems,
+    isInitialLoading: isLoadingClothing,
     isFilterLoading,
-    hasMore,
-    error,
+    hasMore: hasMoreClothing,
+    error: clothingError,
     currentRequest,
     search,
-    loadMore,
-    deleteItem,
-    refresh,
+    loadMore: loadMoreClothing,
+    deleteItem: deleteClothingItem,
   } = useClothingItems();
 
-  const [selectedItem, setSelectedItem] = useState<ClothingItemResponse | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const {
+    displayedItems: outfits,
+    isInitialLoading: isLoadingOutfits,
+    hasMore: hasMoreOutfits,
+    error: outfitError,
+    loadMore: loadMoreOutfits,
+    deleteItem: deleteOutfit,
+  } = useOutfits();
+
+  const [selectedClothingItem, setSelectedClothingItem] = useState<ClothingItemResponse | null>(null);
+  const [isClothingModalOpen, setIsClothingModalOpen] = useState(false);
+  const [selectedOutfit, setSelectedOutfit] = useState<OutfitResponse | null>(null);
+  const [isOutfitModalOpen, setIsOutfitModalOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'clothing' | 'outfits'>('clothing');
   
-  const observerTarget = useRef<HTMLDivElement>(null);
+  const clothingObserverTarget = useRef<HTMLDivElement>(null);
+  const outfitObserverTarget = useRef<HTMLDivElement>(null);
 
   const getCurrentFilters = useCallback(() => {
     const typeFilter = currentRequest.filter?.filters?.find(f => f.attribute === 'type');
@@ -50,19 +70,36 @@ const ClosetView = () => {
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isFilterLoading) {
-          loadMore();
+        if (entries[0].isIntersecting && hasMoreClothing && !isFilterLoading && activeTab === 'clothing') {
+          loadMoreClothing();
         }
       },
       { threshold: 0.1, rootMargin: '100px' }
     );
 
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
+    if (clothingObserverTarget.current) {
+      observer.observe(clothingObserverTarget.current);
     }
 
     return () => observer.disconnect();
-  }, [hasMore, isFilterLoading, loadMore]);
+  }, [hasMoreClothing, isFilterLoading, loadMoreClothing, activeTab]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMoreOutfits && activeTab === 'outfits') {
+          loadMoreOutfits();
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    );
+
+    if (outfitObserverTarget.current) {
+      observer.observe(outfitObserverTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMoreOutfits, loadMoreOutfits, activeTab]);
 
   const handleSearch = (searchText: string) => {
     search({
@@ -89,34 +126,64 @@ const ClosetView = () => {
     });
   };
 
-  const handleDeleteItem = async (itemId: string) => {
+  const handleDeleteClothingItem = async (itemId: string) => {
     try {
-      await deleteItem(itemId);
-      if (selectedItem?.id === itemId) {
-        handleCloseModal();
+      await deleteClothingItem(itemId);
+      if (selectedClothingItem?.id === itemId) {
+        handleCloseClothingModal();
       }
-
-      toast.success(`Clothing item deleted from your closet!`);
-
+      toast.success('Clothing item deleted from your closet!');
     } catch (err) {
+      toast.error('Failed to delete clothing item. Please try again.');
     }
   };
 
-  const handleItemClick = (item: ClothingItemResponse) => {
-    setSelectedItem(item);
-    setIsModalOpen(true);
+  const handleClothingItemClick = (item: ClothingItemResponse) => {
+    setSelectedClothingItem(item);
+    setIsClothingModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setTimeout(() => setSelectedItem(null), 300);
+  const handleCloseClothingModal = () => {
+    setIsClothingModalOpen(false);
+    setTimeout(() => setSelectedClothingItem(null), 300);
+  };
+
+  const handleOutfitClick = async (outfit: OutfitResponse) => {
+    try {
+      const fullOutfit = await outfitApi.getOutfit(outfit.id);
+      setSelectedOutfit(fullOutfit);
+      setIsOutfitModalOpen(true);
+    } catch (err) {
+      toast.error('Internal error while getting outfit');
+    }
+  };
+
+  const handleCloseOutfitModal = () => {
+    setIsOutfitModalOpen(false);
+    setTimeout(() => setSelectedOutfit(null), 300);
+  };
+
+  const handleDeleteOutfit = async (outfitId: string) => {
+    try {
+      await deleteOutfit(outfitId);
+      toast.success('Outfit deleted successfully!');
+    } catch (err) {
+      toast.error('Failed to delete outfit. Please try again.');
+    }
+  };
+
+  const handleEditOutfit = (outfit: OutfitResponse) => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('editingOutfit', JSON.stringify(outfit));
+    }
+    router.push(`/outfit?outfitId=${outfit.id}`);
   };
 
   const activeFilterCount = 
     currentFilters.types.length + 
     (currentFilters.sortBy !== 'createdAt' || currentFilters.sortOrder !== 'DESCENDING' ? 1 : 0);
 
-  if (isInitialLoading) {
+  if (isLoadingClothing || isLoadingOutfits) {
     return <GlobalLoader />;
   }
 
@@ -125,78 +192,121 @@ const ClosetView = () => {
       <h1 className="text-4xl font-bold text-fitted-gray-900 text-center mb-8">
         Your Closet
       </h1>
-      
-      <div className="flex gap-4 mb-8">
-        <SearchBar
-          initialValue={currentFilters.searchText}
-          onSearch={handleSearch}
-          className="flex-1"
-        />
-        <FilterButton
-          onClick={() => setIsFilterModalOpen(true)}
-          activeFilterCount={activeFilterCount}
-        />
-      </div>
 
-      {error && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'clothing' | 'outfits')} className="w-full">
+        <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
+          <TabsTrigger value="clothing">Clothing Items</TabsTrigger>
+          <TabsTrigger value="outfits">Outfits</TabsTrigger>
+        </TabsList>
 
-      {(currentFilters.types.length > 0 || currentFilters.searchText) && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          {currentFilters.searchText && (
-            <div className="px-3 py-1 bg-fitted-blue-accent/10 text-fitted-blue-accent rounded-full text-sm font-medium">
-              Search: "{currentFilters.searchText}"
-            </div>
-          )}
-          {currentFilters.types.map(type => (
-            <div key={type} className="px-3 py-1 bg-fitted-blue-accent/10 text-fitted-blue-accent rounded-full text-sm font-medium capitalize">
-              {type}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {displayedItems.length === 0 ? (
-        <div className="text-center py-16">
-          {!isInitialLoading && (currentFilters.searchText || currentFilters.types.length > 0) ? (
-            <>
-              <p className="text-xl text-fitted-gray-600 mb-2">No items found</p>
-              <p className="text-fitted-gray-500">
-                Try adjusting your filters or search terms
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-xl text-fitted-gray-600 mb-2">Your closet is empty.</p>
-              <p className="text-fitted-gray-500">
-                Start by uploading some clothing items to build your wardrobe!
-              </p>
-            </>
-          )}
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-            {displayedItems.map((item) => (
-              <ClothingItemCard
-                key={item.id}
-                item={item}
-                onDelete={handleDeleteItem}
-                onClick={handleItemClick}
-              />
-            ))}
+        <TabsContent value="clothing" className="space-y-6">
+          <div className="flex gap-4">
+            <SearchBar
+              initialValue={currentFilters.searchText}
+              onSearch={handleSearch}
+              className="flex-1"
+            />
+            <FilterButton
+              onClick={() => setIsFilterModalOpen(true)}
+              activeFilterCount={activeFilterCount}
+            />
           </div>
 
-          {hasMore && (
-            <div ref={observerTarget} className="h-20 flex items-center justify-center">
+          {clothingError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{clothingError}</AlertDescription>
+            </Alert>
+          )}
+
+          {(currentFilters.types.length > 0 || currentFilters.searchText) && (
+            <div className="flex flex-wrap gap-2">
+              {currentFilters.searchText && (
+                <div className="px-3 py-1 bg-fitted-blue-accent/10 text-fitted-blue-accent rounded-full text-sm font-medium">
+                  Search: "{currentFilters.searchText}"
+                </div>
+              )}
+              {currentFilters.types.map(type => (
+                <div key={type} className="px-3 py-1 bg-fitted-blue-accent/10 text-fitted-blue-accent rounded-full text-sm font-medium capitalize">
+                  {type}
+                </div>
+              ))}
             </div>
           )}
-        </>
-      )}
+
+          {clothingItems.length === 0 ? (
+            <div className="text-center py-16">
+              {!isLoadingClothing && (currentFilters.searchText || currentFilters.types.length > 0) ? (
+                <>
+                  <p className="text-xl text-fitted-gray-600 mb-2">No items found</p>
+                  <p className="text-fitted-gray-500">
+                    Try adjusting your filters or search terms
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xl text-fitted-gray-600 mb-2">Your closet is empty.</p>
+                  <p className="text-fitted-gray-500">
+                    Start by uploading some clothing items to build your wardrobe!
+                  </p>
+                </>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                {clothingItems.map((item) => (
+                  <ClothingItemCard
+                    key={item.id}
+                    item={item}
+                    onDelete={handleDeleteClothingItem}
+                    onClick={handleClothingItemClick}
+                  />
+                ))}
+              </div>
+
+              {hasMoreClothing && (
+                <div ref={clothingObserverTarget} className="h-20 flex items-center justify-center" />
+              )}
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="outfits" className="space-y-6">
+          {outfitError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{outfitError}</AlertDescription>
+            </Alert>
+          )}
+
+          {outfits.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="text-xl text-fitted-gray-600 mb-2">No outfits yet.</p>
+              <p className="text-fitted-gray-500">
+                Start by creating outfits on the outfit canvas!
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                {outfits.map((outfit) => (
+                  <OutfitCard
+                    key={outfit.id}
+                    outfit={outfit}
+                    onDelete={handleDeleteOutfit}
+                    onClick={handleOutfitClick}
+                  />
+                ))}
+              </div>
+
+              {hasMoreOutfits && (
+                <div ref={outfitObserverTarget} className="h-20 flex items-center justify-center" />
+              )}
+            </>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <FilterModal
         isOpen={isFilterModalOpen}
@@ -210,10 +320,18 @@ const ClosetView = () => {
       />
 
       <ClothingItemModal
-        item={selectedItem}
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onDelete={handleDeleteItem}
+        item={selectedClothingItem}
+        isOpen={isClothingModalOpen}
+        onClose={handleCloseClothingModal}
+        onDelete={handleDeleteClothingItem}
+      />
+
+      <OutfitModal
+        outfit={selectedOutfit}
+        isOpen={isOutfitModalOpen}
+        onClose={handleCloseOutfitModal}
+        onDelete={handleDeleteOutfit}
+        onEdit={handleEditOutfit}
       />
     </div>
   );

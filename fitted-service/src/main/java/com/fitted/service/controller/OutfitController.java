@@ -138,7 +138,7 @@ public class OutfitController {
         log.info("Received UpdateOutfit request: outfitId={}, originalImageFileSize={}, clothing items in outfit={}",
                 outfitId, outfitImageFile.getSize(), clothingItems.size());
 
-        UpdateOutfitRequest updateOutfitRequest = UpdateOutfitRequest.updateOutfitRequestBuilder()
+        UpdateOutfitRequest updateOutfitRequest = UpdateOutfitRequest.builder()
                 .outfitId(outfitId)
                 .outfitImageFile(outfitImageFile)
                 .clothingItems(clothingItems)

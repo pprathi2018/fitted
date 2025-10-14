@@ -4,9 +4,9 @@ import com.fitted.service.auth.model.Users;
 import com.fitted.service.dto.outfit.OutfitClothingItemDTO;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -14,7 +14,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class CreateOutfitRequest {
     @NotNull(message = "Outfit image file is required.")
     private MultipartFile outfitImageFile;

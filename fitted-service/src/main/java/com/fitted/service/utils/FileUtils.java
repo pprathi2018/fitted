@@ -2,6 +2,7 @@ package com.fitted.service.utils;
 
 import com.fitted.service.exception.ValidationException;
 import lombok.extern.log4j.Log4j2;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.tika.Tika;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -41,13 +42,15 @@ public class FileUtils {
     }
 
     public static String getClothingItemFileKey(String userId, String id, String imageType, String extension) {
-        // userid/clothing-items/id/original.png
-        return String.format("%s/clothing-items/%s/%s%s", userId, id, imageType, extension);
+        // userid/clothing-items/id/{UUID}_original.png
+        return String.format("%s/clothing-items/%s/%s_%s%s", userId, id, RandomStringUtils.secure().nextAlphanumeric(10),
+                imageType, extension);
     }
 
     public static String getOutfitItemFileKey(String userId, String id, String extension) {
-        // userid/outfits/id/outfit.png
-        return String.format("%s/outfits/%s/outfit%s", userId, id, extension);
+        // userid/outfits/id/{UUID}_outfit.png
+        return String.format("%s/outfits/%s/%s_outfit%s", userId, id, RandomStringUtils.secure().nextAlphanumeric(10),
+                extension);
     }
 
     public static String getFileExtension(String fileName) {

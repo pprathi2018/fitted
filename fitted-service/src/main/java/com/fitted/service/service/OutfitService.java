@@ -184,6 +184,9 @@ public class OutfitService {
             outfitImageS3Url = outfitImageUrls.left();
             String outfitCloudFrontUrl = outfitImageUrls.right();
 
+            // delete old S3 object
+            s3FileUploadService.deleteFile(cloudFrontUrlService.convertCloudFrontToS3Url(existingOutfit.getOutfitImageUrl()));
+
             // delete all existing outfit clothing items
             List<UUID> existingClothingItemsInExistingOutfit = existingOutfit.getClothingItems().stream()
                     .map(OutfitClothingItemDTO::getClothingItemId).toList();
