@@ -76,11 +76,10 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // TODO: UPDATE THIS
         configuration.setAllowedOriginPatterns(List.of(
                 "http://localhost:3000", // Local development server
                 "https://fitted-service.onrender.com", // Production server
-                "https://www.fitted.app"  // TODO: UPDATE THIS
+                "https://fitted-mocha.vercel.app/"
         ));
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
