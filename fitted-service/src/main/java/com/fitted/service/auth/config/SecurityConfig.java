@@ -58,6 +58,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/login").permitAll()
                         .requestMatchers("/api/v1/auth/refresh").permitAll()
                         .requestMatchers("/").permitAll()
+                        .requestMatchers("/health").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/v1/auth/me").authenticated()
                         .requestMatchers("/api/v1/auth/logout").authenticated()
@@ -77,8 +78,8 @@ public class SecurityConfig {
 
         // TODO: UPDATE THIS
         configuration.setAllowedOriginPatterns(List.of(
-                "http://localhost:3000",  // Local development server
-                "https://fitted.app",     // Production server
+                "http://localhost:3000", // Local development server
+                "https://fitted-service.onrender.com", // Production server
                 "https://www.fitted.app"  // TODO: UPDATE THIS
         ));
 
