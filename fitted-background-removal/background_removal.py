@@ -18,7 +18,7 @@ class BackgroundRemovalError(Exception):
         super().__init__(self.message)
 
 class BackgroundRemover:
-    SUPPORTED_FORMATS = {'.jpg', '.jpeg', '.png'}
+    SUPPORTED_FORMATS = {'.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif', '.tiff', '.tif', '.avif'}
     
     def __init__(self, use_cloth_seg: bool = False):
         model_name = 'u2net_cloth_seg' if use_cloth_seg else 'isnet-general-use'

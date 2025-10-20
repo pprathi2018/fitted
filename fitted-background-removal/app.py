@@ -71,7 +71,16 @@ async def remove_background(file: UploadFile = File(...), use_cloth_seg: bool = 
             detail="Background removal service is not available. Please try again later."
         )
     
-    allowed_types = ["image/jpeg", "image/jpg", "image/png"]
+    allowed_types = [
+        "image/jpeg", 
+        "image/jpg", 
+        "image/png", 
+        "image/webp",
+        "image/bmp",
+        "image/gif",
+        "image/tiff",
+        "image/avif"
+    ]
     if file.content_type not in allowed_types:
         raise HTTPException(
             status_code=400, 

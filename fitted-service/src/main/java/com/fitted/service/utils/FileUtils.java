@@ -18,7 +18,11 @@ public class FileUtils {
             "image/jpeg",
             "image/jpg",
             "image/png",
-            "image/webp"
+            "image/webp",
+            "image/bmp",
+            "image/gif",
+            "image/tiff",
+            "image/avif"
     );
 
     public static MultipartFile validateFile(MultipartFile file) {

@@ -9,6 +9,8 @@ RUN dnf update -y && \
     cmake \
     mesa-libGL \
     mesa-libGL-devel \
+    libavif \
+    libavif-devel \
     && dnf clean all
 
 
