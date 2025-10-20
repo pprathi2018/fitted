@@ -1,4 +1,3 @@
-# Dockerfile
 FROM public.ecr.aws/lambda/python:3.12
 
 RUN dnf update -y && \
@@ -9,14 +8,13 @@ RUN dnf update -y && \
     cmake \
     mesa-libGL \
     mesa-libGL-devel \
-    libavif \
-    libavif-devel \
     && dnf clean all
-
 
 COPY requirements.txt ${LAMBDA_TASK_ROOT}
 
 RUN pip install --upgrade pip
+
+RUN pip install pillow-avif-plugin
 
 RUN pip install -r requirements.txt
 
