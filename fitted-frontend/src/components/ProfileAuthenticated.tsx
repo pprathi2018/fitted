@@ -2,12 +2,12 @@
 
 import { useRouter } from 'next/navigation';
 import { User } from '@/lib/auth/types';
-import { Mail, LogOut } from 'lucide-react';
+import { Mail, LogOut, Shirt, Calendar } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { fittedButton } from '@/lib/styles';
 import { cn } from '@/lib/utils';
+import image from '@/app/closet-image.png';
 
 interface ProfileAuthenticatedProps {
   user: User;
@@ -22,53 +22,78 @@ export default function ProfileAuthenticated({ user }: ProfileAuthenticatedProps
     router.push('/');
   };
 
-  return (
-    <Card className="shadow-xl overflow-hidden">
-      <CardHeader className="bg-fitted-blue-gradient text-white text-center py-12">
-        <h2 className="text-2xl font-semibold mb-2">
-          {user.firstName} {user.lastName}
-        </h2>
-        <p className="flex items-center justify-center gap-2 text-white/90">
-          <Mail className="size-4" />
-          {user.email}
-        </p>
-      </CardHeader>
+  const handleGoToCloset = () => {
+    router.push('/closet');
+  };
 
-      <CardContent className="p-8 space-y-6">
-        <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-fitted-gray-500 mb-4">
-            Account Information
-          </h3>
+  const getInitials = () => {
+    const firstInitial = user.firstName.charAt(0).toUpperCase();
+    const lastInitial = user.lastName.charAt(0).toUpperCase();
+    return `${firstInitial}${lastInitial}`;
+  };
+
+  const getMemberSinceDate = () => {
+    return new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long'
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-fitted-gradient flex items-center justify-center relative overflow-hidden">
+      <div className="absolute inset-0 z-0">
+        <img 
+          src={image.src}
+          alt="Closet background"
+          className="w-full h-full object-cover opacity-[0.08] blur-[1.25px]"
+        />
+        <div className="absolute inset-0 bg-fitted-blue-pale" />
+      </div>
+
+      <div className="relative z-10 w-full max-w-md px-4">
+        <div className="glass-card rounded-[2rem] shadow-lg p-8">
+          <div className="flex justify-center mb-6">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-fitted-blue-accent to-blue-700 flex items-center justify-center shadow-lg">
+              <span className="text-3xl font-bold text-white">
+                {getInitials()}
+              </span>
+            </div>
+          </div>
+
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-fitted-gray-900 mb-2">
+              {user.firstName} {user.lastName}
+            </h1>
+            <div className="flex items-center justify-center gap-2 text-fitted-gray-600 mb-3">
+              <Mail className="size-4" />
+              <span className="text-sm">{user.email}</span>
+            </div>
+            <div className="flex items-center justify-center gap-2 text-fitted-gray-500">
+              <Calendar className="size-4" />
+              <span className="text-sm">Member since {getMemberSinceDate()}</span>
+            </div>
+          </div>
+
+          <div className="border-t border-fitted-gray-200 my-6" />
+
           <div className="space-y-3">
-            <InfoRow label="User ID" value={user.id} />
-            <InfoRow 
-              label="Member Since" 
-              value={new Date().toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })} 
-            />
+            <Button
+              onClick={handleGoToCloset}
+              className={cn(fittedButton({ variant: "primary", size: "full" }))}
+            >
+              <Shirt className="size-5 mr-2" />
+              My Closet
+            </Button>
+            <Button 
+              onClick={handleLogout} 
+              className={cn(fittedButton({ variant: "danger", size: "full" }))}
+            >
+              <LogOut className="size-5 mr-2" />
+              Log Out
+            </Button>
           </div>
         </div>
-
-        <Button 
-          onClick={handleLogout} 
-          className={cn(fittedButton({ variant: "danger", size: "full" }))}
-        >
-          <LogOut className="size-5 mr-2" />
-          Log Out
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between items-center py-3 border-b border-fitted-gray-100 last:border-0">
-      <span className="text-sm text-fitted-gray-600">{label}</span>
-      <span className="text-sm font-medium text-fitted-gray-900 font-mono">{value}</span>
+      </div>
     </div>
   );
 }
