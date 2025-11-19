@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -32,6 +33,8 @@ public class Outfit {
     private String outfitImageUrl;
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+    @Column(name = "tags")
+    private List<String> tags;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private Users user;

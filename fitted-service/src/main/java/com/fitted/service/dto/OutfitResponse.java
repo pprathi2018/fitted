@@ -21,5 +21,6 @@ public class OutfitResponse {
     private String outfitImageUrl;
     private List<OutfitClothingItemDTO> clothingItems;
     private LocalDateTime createdAt;
+    private List<String> tags;
     private String userId;
 }

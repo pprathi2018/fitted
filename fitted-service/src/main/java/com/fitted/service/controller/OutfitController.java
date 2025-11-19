@@ -45,6 +45,7 @@ public class OutfitController {
     public ResponseEntity<OutfitResponse> saveOutfit(
             @RequestParam("outfitImageFile") @NotNull(message = "Outfit image file is required") MultipartFile outfitImageFile,
             @RequestParam("clothingItems") String clothingItemsJson,
+            @RequestParam("tags") List<String> tags,
             @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
 
@@ -66,6 +67,7 @@ public class OutfitController {
         CreateOutfitRequest createOutfitRequest = CreateOutfitRequest.builder()
                 .outfitImageFile(outfitImageFile)
                 .clothingItems(clothingItems)
+                .tags(tags)
                 .user(userPrincipal.user())
                 .build();
 

@@ -20,5 +20,6 @@ public class CreateOutfitRequest {
     private MultipartFile outfitImageFile;
     @NotNull(message = "At least one clothing item is required in outfit.")
     private List<OutfitClothingItemDTO> clothingItems;
+    private List<String> tags;
     private Users user;
 }
