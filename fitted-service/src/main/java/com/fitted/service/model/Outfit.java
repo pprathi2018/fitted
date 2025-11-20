@@ -14,6 +14,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,7 +35,8 @@ public class Outfit {
     private String outfitImageUrl;
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-    @Column(name = "tags")
+    @Column(name = "tags", columnDefinition = "text[]")
+    @JdbcTypeCode(SqlTypes.ARRAY)
     private List<String> tags;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

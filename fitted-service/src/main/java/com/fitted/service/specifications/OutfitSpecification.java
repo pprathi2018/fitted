@@ -11,7 +11,10 @@ import java.util.UUID;
 public class OutfitSpecification {
 
     private static final List<String> SEARCHABLE_ATTRIBUTES = List.of();
-    private static final SpecificationBuilder<Outfit> OUTFIT_SPEC_BUILDER = new SpecificationBuilder<>(SEARCHABLE_ATTRIBUTES);
+    private static final List<String> SEARCHABLE_ARRAY_ATTRIBUTES = List.of("tags");
+    private static final SpecificationBuilder<Outfit> OUTFIT_SPEC_BUILDER = new SpecificationBuilder<>(
+            SEARCHABLE_ATTRIBUTES, SEARCHABLE_ARRAY_ATTRIBUTES
+    );
 
     public static Specification<Outfit> buildOutfitSpec(Filter filter, Search search, UUID userId) {
         return OUTFIT_SPEC_BUILDER.build(filter, search, userId);

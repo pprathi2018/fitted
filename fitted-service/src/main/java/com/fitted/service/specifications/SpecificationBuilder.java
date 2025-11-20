@@ -2,6 +2,7 @@ package com.fitted.service.specifications;
 
 import com.fitted.service.dto.search.Filter;
 import com.fitted.service.dto.search.Search;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import lombok.NonNull;
@@ -16,9 +17,12 @@ import java.util.UUID;
 public class SpecificationBuilder<T> {
 
     private final List<String> searchableAttributes;
+    private final List<String> searchableTextArrayAttributes;
 
-    public SpecificationBuilder(@NonNull List<String> searchableAttributes) {
+    public SpecificationBuilder(@NonNull List<String> searchableAttributes,
+                                @NonNull List<String> searchableTextArrayAttributes) {
         this.searchableAttributes = searchableAttributes;
+        this.searchableTextArrayAttributes = searchableTextArrayAttributes;
     }
 
     public Specification<T> build(Filter filter, Search search, UUID userId) {
@@ -81,11 +85,33 @@ public class SpecificationBuilder<T> {
                     ? search.getSearchIn()
                     : this.searchableAttributes;
 
-            Predicate[] searchPredicates = attributesToSearch.stream()
-                    .map(attribute -> cb.like(cb.lower(root.get(attribute)), likePattern(searchText)))
-                    .toArray(Predicate[]::new);
+            List<String> arrayAttributesToSearch = Objects.nonNull(search.getSearchIn())
+                    ? this.searchableTextArrayAttributes.stream()
+                    .filter(search.getSearchIn()::contains)
+                    .toList()
+                    : this.searchableTextArrayAttributes;
 
-            return cb.or(searchPredicates);
+            List<Predicate> searchPredicates = attributesToSearch.stream()
+                    .map(attribute -> cb.like(cb.lower(root.get(attribute)), likePattern(searchText)))
+                    .toList();
+
+            List<Predicate> searchArrayPredicate = arrayAttributesToSearch.stream()
+                    .map(attribute -> {
+                        Expression<Integer> position = cb.function(
+                                "array_position",
+                                Integer.class,
+                                root.get(attribute),
+                                cb.literal(searchText.toLowerCase())
+                        );
+
+                        return cb.isNotNull(position);
+                    }).toList();
+
+            List<Predicate> allPredicates = new ArrayList<>();
+            allPredicates.addAll(searchPredicates);
+            allPredicates.addAll(searchArrayPredicate);
+
+            return cb.or(allPredicates.toArray(new Predicate[0]));
         };
     }
 

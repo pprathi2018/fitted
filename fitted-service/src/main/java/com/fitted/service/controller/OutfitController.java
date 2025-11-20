@@ -45,7 +45,7 @@ public class OutfitController {
     public ResponseEntity<OutfitResponse> saveOutfit(
             @RequestParam("outfitImageFile") @NotNull(message = "Outfit image file is required") MultipartFile outfitImageFile,
             @RequestParam("clothingItems") String clothingItemsJson,
-            @RequestParam("tags") List<String> tags,
+            @RequestParam(value = "tags", required = false) List<String> tags,
             @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
 
@@ -123,6 +123,7 @@ public class OutfitController {
             @RequestParam(name = "outfitId") String outfitId,
             @RequestParam("outfitImageFile") @NotNull(message = "Outfit image file is required") MultipartFile outfitImageFile,
             @RequestParam("clothingItems") String clothingItemsJson,
+            @RequestParam(value = "tags", required = false) List<String> tags,
             @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -144,6 +145,7 @@ public class OutfitController {
                 .outfitId(outfitId)
                 .outfitImageFile(outfitImageFile)
                 .clothingItems(clothingItems)
+                .tags(tags)
                 .user(userPrincipal.user())
                 .build();
 
