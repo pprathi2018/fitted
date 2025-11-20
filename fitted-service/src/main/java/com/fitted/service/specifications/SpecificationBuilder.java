@@ -98,11 +98,11 @@ public class SpecificationBuilder<T> {
             List<Predicate> searchArrayPredicates = arrayAttributesToSearch.stream()
                     .map(attribute -> cb.isTrue(
                             cb.function(
-                                    "tag_contains",
-                                    Boolean.class,
+                                    "array_position",
+                                    Integer.class,
                                     root.get(attribute),
                                     cb.literal(searchText)
-                            )
+                            ).in(1)
                     ))
                     .toList();
 
