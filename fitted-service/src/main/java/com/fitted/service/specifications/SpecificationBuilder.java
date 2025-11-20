@@ -2,6 +2,7 @@ package com.fitted.service.specifications;
 
 import com.fitted.service.dto.search.Filter;
 import com.fitted.service.dto.search.Search;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import lombok.NonNull;
@@ -95,12 +96,12 @@ public class SpecificationBuilder<T> {
                     .toList();
 
             List<Predicate> searchArrayPredicates = arrayAttributesToSearch.stream()
-                    .map(attribute ->
-                            cb.equal(
-                                    cb.literal(searchText),
-                                    cb.function("any", String.class, root.get(attribute))
-                            )
-                    )
+                    .map(attribute -> {
+                        Expression<Object> anyElement =
+                                cb.function("any", Object.class, root.get(attribute));
+
+                        return cb.equal(cb.literal(searchText), anyElement);
+                    })
                     .toList();
 
             List<Predicate> allPredicates = new ArrayList<>();
