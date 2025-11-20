@@ -2,7 +2,6 @@ package com.fitted.service.specifications;
 
 import com.fitted.service.dto.search.Filter;
 import com.fitted.service.dto.search.Search;
-import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import lombok.NonNull;
@@ -95,24 +94,18 @@ public class SpecificationBuilder<T> {
                     .map(attribute -> cb.like(cb.lower(root.get(attribute)), likePattern(searchText)))
                     .toList();
 
-            List<Predicate> searchArrayPredicate = arrayAttributesToSearch.stream()
-                    .map(attribute -> {
-                        Expression<String> arrayAsString = cb.function(
-                                "array_to_string",
-                                String.class,
-                                root.get(attribute),
-                                cb.literal(" ")
-                        );
-
-                        return cb.like(
-                                cb.lower(arrayAsString),
-                                likePattern(searchText)
-                        );
-                    }).toList();
+            List<Predicate> searchArrayPredicates = arrayAttributesToSearch.stream()
+                    .map(attribute ->
+                            cb.equal(
+                                    cb.literal(searchText),
+                                    cb.function("any", String.class, root.get(attribute))
+                            )
+                    )
+                    .toList();
 
             List<Predicate> allPredicates = new ArrayList<>();
             allPredicates.addAll(searchPredicates);
-            allPredicates.addAll(searchArrayPredicate);
+            allPredicates.addAll(searchArrayPredicates);
 
             return cb.or(allPredicates.toArray(new Predicate[0]));
         };
