@@ -97,14 +97,17 @@ public class SpecificationBuilder<T> {
 
             List<Predicate> searchArrayPredicate = arrayAttributesToSearch.stream()
                     .map(attribute -> {
-                        Expression<Integer> position = cb.function(
-                                "array_position",
-                                Integer.class,
+                        Expression<String> arrayAsString = cb.function(
+                                "array_to_string",
+                                String.class,
                                 root.get(attribute),
-                                cb.literal(searchText.toLowerCase())
+                                cb.literal(" ")
                         );
 
-                        return cb.isNotNull(position);
+                        return cb.like(
+                                cb.lower(arrayAsString),
+                                likePattern(searchText)
+                        );
                     }).toList();
 
             List<Predicate> allPredicates = new ArrayList<>();
