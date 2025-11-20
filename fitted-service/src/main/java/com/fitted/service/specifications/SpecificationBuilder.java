@@ -96,12 +96,14 @@ public class SpecificationBuilder<T> {
                     .toList();
 
             List<Predicate> searchArrayPredicates = arrayAttributesToSearch.stream()
-                    .map(attribute -> {
-                        Expression<Object> anyElement =
-                                cb.function("any", Object.class, root.get(attribute));
-
-                        return cb.equal(cb.literal(searchText), anyElement);
-                    })
+                    .map(attribute -> cb.isTrue(
+                            cb.function(
+                                    "tag_contains",
+                                    Boolean.class,
+                                    root.get(attribute),
+                                    cb.literal(searchText)
+                            )
+                    ))
                     .toList();
 
             List<Predicate> allPredicates = new ArrayList<>();

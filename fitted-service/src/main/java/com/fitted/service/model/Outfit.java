@@ -1,6 +1,7 @@
 package com.fitted.service.model;
 
 import com.fitted.service.auth.model.Users;
+import com.vladmihalcea.hibernate.type.array.ListArrayType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -15,6 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Type;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
@@ -35,8 +37,9 @@ public class Outfit {
     private String outfitImageUrl;
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-    @Column(name = "tags", columnDefinition = "text[]")
+    @Column(name = "tags", columnDefinition = "citext[]")
     @JdbcTypeCode(SqlTypes.ARRAY)
+    @Type(ListArrayType.class)
     private List<String> tags;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
