@@ -31,13 +31,17 @@ import java.util.UUID;
 public class Outfit {
     @Id
     private UUID id;
+
     @Column(name="outfit_image_url", nullable = false)
     private String outfitImageUrl;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-    @Column(name = "tags", columnDefinition = "citext[]")
+
+    @Column(name = "tags", columnDefinition = "text[]")
     @JdbcTypeCode(SqlTypes.ARRAY)
     private List<String> tags;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private Users user;

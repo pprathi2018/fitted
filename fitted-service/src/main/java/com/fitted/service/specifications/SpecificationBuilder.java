@@ -82,7 +82,9 @@ public class SpecificationBuilder<T> {
             }
 
             List<String> attributesToSearch = Objects.nonNull(search.getSearchIn())
-                    ? search.getSearchIn()
+                    ? this.searchableAttributes.stream()
+                    .filter(search.getSearchIn()::contains)
+                    .toList()
                     : this.searchableAttributes;
 
             List<String> arrayAttributesToSearch = Objects.nonNull(search.getSearchIn())
@@ -98,11 +100,11 @@ public class SpecificationBuilder<T> {
             List<Predicate> searchArrayPredicates = arrayAttributesToSearch.stream()
                     .map(attribute -> cb.isTrue(
                             cb.function(
-                                    "array_position",
-                                    Integer.class,
+                                    "array_contains_exact_ci",
+                                    Boolean.class,
                                     root.get(attribute),
                                     cb.literal(searchText)
-                            ).in(1)
+                            )
                     ))
                     .toList();
 
