@@ -1,6 +1,6 @@
 'use client';
 
-import { Trash2, Edit } from 'lucide-react';
+import { Trash2, Edit, Tag as TagIcon } from 'lucide-react';
 import { OutfitResponse } from '@/lib/api/outfit-api-client';
 import {
   Dialog,
@@ -29,7 +29,7 @@ const OutfitModal = ({ outfit, isOpen, onClose, onDelete, onEdit }: OutfitModalP
   };
 
   const handleEditClick = () => {
-    onEdit(outfit);4
+    onEdit(outfit);
     onClose();
   };
 
@@ -66,6 +66,25 @@ const OutfitModal = ({ outfit, isOpen, onClose, onDelete, onEdit }: OutfitModalP
                 value={`${clothingItemCount} clothing ${clothingItemCount === 1 ? 'item' : 'items'}`} 
               />
             </div>
+            
+            {outfit.tags && outfit.tags.length > 0 && (
+              <div className="pt-3 border-t">
+                <div className="flex items-center gap-2 mb-3">
+                  <TagIcon className="h-4 w-4 text-fitted-gray-500" />
+                  <span className="text-sm font-medium text-fitted-gray-500">Tags</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {outfit.tags.map((tag) => (
+                    <div
+                      key={tag}
+                      className="inline-flex items-center px-3 py-1 bg-fitted-blue-accent/10 text-fitted-blue-accent rounded-full text-sm font-medium border border-fitted-blue-accent/20"
+                    >
+                      {tag}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             
             <div className="flex gap-3 pt-4">
               <Button

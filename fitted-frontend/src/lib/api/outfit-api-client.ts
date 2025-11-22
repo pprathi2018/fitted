@@ -13,12 +13,14 @@ export interface OutfitClothingItemDTO {
 export interface CreateOutfitRequest {
   outfitImageFile: File;
   clothingItems: OutfitClothingItemDTO[];
+  tags?: string[];
 }
 
 export interface UpdateOutfitRequest {
   outfitId: string;
   outfitImageFile: File;
   clothingItems: OutfitClothingItemDTO[];
+  tags?: string[];
 }
 
 export interface OutfitResponse {
@@ -27,6 +29,7 @@ export interface OutfitResponse {
   clothingItems?: OutfitClothingItemDTO[];
   createdAt: string;
   userId: string;
+  tags?: string[];
 }
 
 export interface SearchOutfitsRequest {
@@ -60,7 +63,11 @@ export class OutfitApiService {
     const formData = new FormData();
     formData.append('outfitImageFile', request.outfitImageFile);
     formData.append('clothingItems', JSON.stringify(request.clothingItems));
-
+    
+    if (request.tags && request.tags.length > 0) {
+      request.tags.forEach(tag => formData.append('tags', tag));
+    }
+  
     const response = await apiClient.request<OutfitResponse>(
       '/api/v1/outfits',
       {
@@ -69,7 +76,7 @@ export class OutfitApiService {
         headers: {},
       }
     );
-
+  
     return response;
   }
 
@@ -77,7 +84,11 @@ export class OutfitApiService {
     const formData = new FormData();
     formData.append('outfitImageFile', request.outfitImageFile);
     formData.append('clothingItems', JSON.stringify(request.clothingItems));
-
+    
+    if (request.tags && request.tags.length > 0) {
+      request.tags.forEach(tag => formData.append('tags', tag));
+    }
+  
     const response = await apiClient.request<OutfitResponse>(
       `/api/v1/outfits?outfitId=${request.outfitId}`,
       {
@@ -86,7 +97,7 @@ export class OutfitApiService {
         headers: {},
       }
     );
-
+  
     return response;
   }
 

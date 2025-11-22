@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, pointerWithin } from '@dnd-kit/core';
-import { Trash2, MoveUp, MoveDown, ChevronDown, ChevronUp, RefreshCw, Save, Loader2, AlertCircle } from 'lucide-react';
+import { Trash2, MoveUp, MoveDown, ChevronDown, ChevronUp, RefreshCw, Save, Loader2, AlertCircle, Tag as TagIcon } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { ClothingItemResponse } from '@/lib/api/clothing-item-api-client';
 import { useClothingItemsByType } from '@/hooks/useClothingItemsByType';
@@ -11,10 +11,12 @@ import { outfitApi, OutfitClothingItemDTO, OutfitResponse } from '@/lib/api/outf
 import ClothingItemSidePanel from './ClothingItemSidePanel';
 import CanvasDropZone from './CanvasDropZone';
 import SectionLoader from './SectionLoader';
+import TagInput from './TagInput';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import toast from 'react-hot-toast';
 
 interface OutfitItem {
@@ -42,6 +44,8 @@ const OutfitCanvas = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingOutfit, setIsLoadingOutfit] = useState(false);
   const [editingOutfit, setEditingOutfit] = useState<OutfitResponse | null>(null);
+  const [tags, setTags] = useState<string[]>([]);
+  
   const observerRefs = useRef<Map<string, IntersectionObserver>>(new Map());
   const hasLoadedOutfit = useRef(false);
   const canvasReadyRef = useRef(false);
@@ -100,6 +104,10 @@ const OutfitCanvas = () => {
       }
       
       setEditingOutfit(outfit);
+      
+      if (outfit.tags && outfit.tags.length > 0) {
+        setTags(outfit.tags);
+      }
       
       const canvasElement = document.getElementById('canvas');
       if (!canvasElement || canvasElement.clientWidth === 0 || canvasElement.clientHeight === 0) {
@@ -293,6 +301,7 @@ const OutfitCanvas = () => {
     setNextZIndex(1);
     setSelectedItemId(null);
     setEditingOutfit(null);
+    setTags([]);
     
     router.push('/outfit');
   }, [router]);
@@ -408,12 +417,14 @@ const OutfitCanvas = () => {
           outfitId: outfitId,
           outfitImageFile,
           clothingItems: clothingItemsData,
+          tags,
         });
         toast.success('Outfit updated successfully!');
       } else {
         await outfitApi.createOutfit({
           outfitImageFile,
           clothingItems: clothingItemsData,
+          tags,
         });
         toast.success('Outfit saved successfully!');
       }
@@ -586,6 +597,35 @@ const OutfitCanvas = () => {
                   <MoveDown size={16} />
                 </Button>
               </div>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <TagIcon className="h-4 w-4" />
+                    Tags {tags.length > 0 && `(${tags.length})`}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-96" align="end">
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-fitted-gray-900">
+                      Outfit Tags
+                    </h3>
+                    <TagInput
+                      tags={tags}
+                      onTagsChange={setTags}
+                      placeholder="Type a tag and press Enter..."
+                      maxTags={10}
+                    />
+                    <p className="text-xs text-fitted-gray-500">
+                      Tags help you organize and search for outfits later
+                    </p>
+                  </div>
+                </PopoverContent>
+              </Popover>
               
               <Button
                 onClick={clearOutfit}

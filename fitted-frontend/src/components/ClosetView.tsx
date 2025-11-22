@@ -39,6 +39,8 @@ const ClosetView = () => {
     isInitialLoading: isLoadingOutfits,
     hasMore: hasMoreOutfits,
     error: outfitError,
+    currentRequest: outfitCurrentRequest,
+    search: searchOutfits,
     loadMore: loadMoreOutfits,
     deleteItem: deleteOutfit,
   } = useOutfits();
@@ -65,7 +67,16 @@ const ClosetView = () => {
     };
   }, [currentRequest]);
 
+  const getCurrentOutfitSearch = useCallback(() => {
+    return {
+      searchText: outfitCurrentRequest.search?.searchText || '',
+      sortBy: outfitCurrentRequest.sort?.sortBy || 'createdAt',
+      sortOrder: outfitCurrentRequest.sort?.sortOrder || 'DESCENDING',
+    };
+  }, [outfitCurrentRequest]);
+
   const currentFilters = getCurrentFilters();
+  const currentOutfitSearch = getCurrentOutfitSearch();
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -101,9 +112,18 @@ const ClosetView = () => {
     return () => observer.disconnect();
   }, [hasMoreOutfits, loadMoreOutfits, activeTab]);
 
-  const handleSearch = (searchText: string) => {
+  const handleClothingSearch = (searchText: string) => {
     search({
       search: searchText ? { searchText } : undefined,
+    });
+  };
+
+  const handleOutfitSearch = (searchText: string) => {
+    searchOutfits({
+      search: searchText ? { 
+        searchText,
+        searchIn: ['tags'] // Search in tags for outfits
+      } : undefined,
     });
   };
 
@@ -203,8 +223,9 @@ const ClosetView = () => {
           <div className="flex gap-4">
             <SearchBar
               initialValue={currentFilters.searchText}
-              onSearch={handleSearch}
+              onSearch={handleClothingSearch}
               className="flex-1"
+              placeholder="Search clothing items..."
             />
             <FilterButton
               onClick={() => setIsFilterModalOpen(true)}
@@ -273,6 +294,15 @@ const ClosetView = () => {
         </TabsContent>
 
         <TabsContent value="outfits" className="space-y-6">
+          <div className="flex gap-4">
+            <SearchBar
+              initialValue={currentOutfitSearch.searchText}
+              onSearch={handleOutfitSearch}
+              className="flex-1"
+              placeholder="Search outfits by tags..."
+            />
+          </div>
+
           {outfitError && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -280,12 +310,31 @@ const ClosetView = () => {
             </Alert>
           )}
 
+          {currentOutfitSearch.searchText && (
+            <div className="flex flex-wrap gap-2">
+              <div className="px-3 py-1 bg-fitted-blue-accent/10 text-fitted-blue-accent rounded-full text-sm font-medium">
+                Searching tags: "{currentOutfitSearch.searchText}"
+              </div>
+            </div>
+          )}
+
           {outfits.length === 0 ? (
             <div className="text-center py-16">
-              <p className="text-xl text-fitted-gray-600 mb-2">No outfits yet.</p>
-              <p className="text-fitted-gray-500">
-                Start by creating outfits on the outfit canvas!
-              </p>
+              {currentOutfitSearch.searchText ? (
+                <>
+                  <p className="text-xl text-fitted-gray-600 mb-2">No outfits found</p>
+                  <p className="text-fitted-gray-500">
+                    No outfits match the tag "{currentOutfitSearch.searchText}"
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xl text-fitted-gray-600 mb-2">No outfits yet.</p>
+                  <p className="text-fitted-gray-500">
+                    Start by creating outfits on the outfit canvas!
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <>
