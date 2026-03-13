@@ -23,6 +23,10 @@ public class ClothingItemResponse {
     @JsonProperty("modified_image_url")
     private String modifiedImageUrl;
     private String color;
+    @JsonProperty("ai_description")
+    private String aiDescription;
+    @JsonProperty("enrichment_status")
+    private String enrichmentStatus;
     @JsonProperty("created_at")
     private LocalDateTime createdAt;
     private String userId;

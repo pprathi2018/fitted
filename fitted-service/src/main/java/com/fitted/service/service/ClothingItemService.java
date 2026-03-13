@@ -95,6 +95,8 @@ public class ClothingItemService {
                     .originalImageUrl(saved.getOriginalImageUrl())
                     .modifiedImageUrl(saved.getModifiedImageUrl())
                     .color(saved.getColor())
+                    .aiDescription(saved.getAiDescription())
+                    .enrichmentStatus(saved.getEnrichmentStatus().name())
                     .userId(saved.getUser().getId().toString())
                     .createdAt(saved.getCreatedAt())
                     .build();
@@ -122,6 +124,8 @@ public class ClothingItemService {
                 .originalImageUrl(clothingItem.getOriginalImageUrl())
                 .modifiedImageUrl(clothingItem.getModifiedImageUrl())
                 .color(clothingItem.getColor())
+                .aiDescription(clothingItem.getAiDescription())
+                .enrichmentStatus(clothingItem.getEnrichmentStatus().name())
                 .userId(clothingItem.getUser().getId().toString())
                 .createdAt(clothingItem.getCreatedAt())
                 .build();
@@ -154,6 +158,8 @@ public class ClothingItemService {
                                             .originalImageUrl(clothingItem.getOriginalImageUrl())
                                             .modifiedImageUrl(clothingItem.getModifiedImageUrl())
                                             .color(clothingItem.getColor())
+                                            .aiDescription(clothingItem.getAiDescription())
+                                            .enrichmentStatus(clothingItem.getEnrichmentStatus().name())
                                             .createdAt(clothingItem.getCreatedAt())
                                             .userId(clothingItem.getUser().getId().toString())
                                             .build())

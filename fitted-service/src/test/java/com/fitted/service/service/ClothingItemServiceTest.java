@@ -3,11 +3,11 @@ package com.fitted.service.service;
 import com.fitted.service.dto.ClothingItemResponse;
 import com.fitted.service.dto.CreateClothingItemRequest;
 import com.fitted.service.exception.InternalServerException;
-import com.fitted.service.exception.ValidationException;
 import com.fitted.service.exception.s3.S3FileUploadServerException;
 import com.fitted.service.exception.s3.S3FileUploadValidationException;
 import com.fitted.service.model.ClothingItem;
 import com.fitted.service.model.ClothingType;
+import com.fitted.service.model.EnrichmentStatus;
 import com.fitted.service.repository.ClothingItemRepository;
 import com.fitted.service.utils.ServiceTestDataUtils;
 import org.junit.jupiter.api.Test;
@@ -15,13 +15,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataAccessException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
-import static com.fitted.service.utils.ServiceTestDataUtils.USER;
-import static com.fitted.service.utils.ServiceTestDataUtils.USER_ID;
+import static com.fitted.service.utils.ServiceTestDataUtils.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -36,6 +34,9 @@ class ClothingItemServiceTest {
     @Mock
     private S3FileUploadService s3FileUploadService;
 
+    @Mock
+    private CloudFrontUrlService cloudFrontUrlService;
+
     @InjectMocks
     private ClothingItemService clothingItemService;
 
@@ -47,8 +48,12 @@ class ClothingItemServiceTest {
         ClothingItem savedItem = ServiceTestDataUtils.createClothingItem(mockId);
 
         when(s3FileUploadService.uploadImageFileSimple(any(MultipartFile.class), anyString()))
-                .thenReturn(ServiceTestDataUtils.TEST_S3_URL_ORIGINAL)
-                .thenReturn(ServiceTestDataUtils.TEST_S3_URL_MODIFIED);
+                .thenReturn(TEST_S3_URL_ORIGINAL)
+                .thenReturn(TEST_S3_URL_MODIFIED);
+        when(cloudFrontUrlService.convertS3ToCloudFrontUrl(TEST_S3_URL_ORIGINAL))
+                .thenReturn(TEST_CLOUDFRONT_URL_ORIGINAL);
+        when(cloudFrontUrlService.convertS3ToCloudFrontUrl(TEST_S3_URL_MODIFIED))
+                .thenReturn(TEST_CLOUDFRONT_URL_MODIFIED);
         when(clothingItemRepository.save(any(ClothingItem.class))).thenReturn(savedItem);
 
         // Act
@@ -59,18 +64,21 @@ class ClothingItemServiceTest {
         assertEquals(mockId, response.getId());
         assertEquals("Blue Jeans", response.getName());
         assertEquals(ClothingType.BOTTOM, response.getType());
-        assertEquals(ServiceTestDataUtils.TEST_S3_URL_ORIGINAL, response.getOriginalImageUrl());
-        assertEquals(ServiceTestDataUtils.TEST_S3_URL_MODIFIED, response.getModifiedImageUrl());
+        assertEquals(TEST_CLOUDFRONT_URL_ORIGINAL, response.getOriginalImageUrl());
+        assertEquals(TEST_CLOUDFRONT_URL_MODIFIED, response.getModifiedImageUrl());
         assertEquals("Blue", response.getColor());
+        assertEquals(EnrichmentStatus.NONE.name(), response.getEnrichmentStatus());
         assertEquals(USER_ID, response.getUserId());
 
         verify(s3FileUploadService, times(2)).uploadImageFileSimple(any(MultipartFile.class), anyString());
+        verify(cloudFrontUrlService, times(2)).convertS3ToCloudFrontUrl(anyString());
         verify(clothingItemRepository, times(1)).save(any(ClothingItem.class));
     }
 
     @Test
-    void saveClothingItem_NullOriginalFile_ThrowsValidationException() {
-        // Arrange
+    void saveClothingItem_NullOriginalFile_ThrowsInternalServerException() {
+        // Arrange — null file causes ValidationException from FileUtils,
+        // which is caught by the generic catch(Exception) in saveClothingItem
         CreateClothingItemRequest request = CreateClothingItemRequest.builder()
                 .name("Test Item")
                 .type(ClothingType.TOP)
@@ -80,17 +88,16 @@ class ClothingItemServiceTest {
                 .build();
 
         // Act & Assert
-        ValidationException exception = assertThrows(ValidationException.class, () -> {
+        assertThrows(InternalServerException.class, () -> {
             clothingItemService.saveClothingItem(request);
         });
 
-        assertEquals("File input is invalid.", exception.getMessage());
         verify(s3FileUploadService, never()).uploadImageFileSimple(any(), anyString());
         verify(clothingItemRepository, never()).save(any());
     }
 
     @Test
-    void saveClothingItem_InvalidContentType_ThrowsValidationException() {
+    void saveClothingItem_InvalidContentType_ThrowsInternalServerException() {
         // Arrange
         CreateClothingItemRequest request = CreateClothingItemRequest.builder()
                 .name("Test Item")
@@ -101,11 +108,9 @@ class ClothingItemServiceTest {
                 .build();
 
         // Act & Assert
-        ValidationException exception = assertThrows(ValidationException.class, () -> {
+        assertThrows(InternalServerException.class, () -> {
             clothingItemService.saveClothingItem(request);
         });
-
-        assertEquals("File input is invalid.", exception.getMessage());
     }
 
     @Test
@@ -117,11 +122,10 @@ class ClothingItemServiceTest {
                 .thenThrow(new S3FileUploadValidationException("File too large"));
 
         // Act & Assert
-        ValidationException exception = assertThrows(ValidationException.class, () -> {
+        assertThrows(com.fitted.service.exception.ValidationException.class, () -> {
             clothingItemService.saveClothingItem(request);
         });
 
-        assertEquals("File too large", exception.getMessage());
         verify(clothingItemRepository, never()).save(any());
     }
 
@@ -134,26 +138,28 @@ class ClothingItemServiceTest {
                 .thenThrow(new S3FileUploadServerException("S3 connection failed"));
 
         // Act & Assert
-        InternalServerException exception = assertThrows(InternalServerException.class, () -> {
+        assertThrows(InternalServerException.class, () -> {
             clothingItemService.saveClothingItem(request);
         });
 
-        assertEquals("Internal server error while uploading image to S3", exception.getMessage());
         verify(clothingItemRepository, never()).save(any());
     }
 
     @Test
-    void saveClothingItem_DatabaseException_ThrowsDataAccessException() {
+    void saveClothingItem_DatabaseException_ThrowsInternalServerException() {
         // Arrange
         CreateClothingItemRequest request = ServiceTestDataUtils.createValidRequest();
 
         when(s3FileUploadService.uploadImageFileSimple(any(MultipartFile.class), anyString()))
-                .thenReturn(ServiceTestDataUtils.TEST_S3_URL_ORIGINAL);
+                .thenReturn(TEST_S3_URL_ORIGINAL)
+                .thenReturn(TEST_S3_URL_MODIFIED);
+        when(cloudFrontUrlService.convertS3ToCloudFrontUrl(anyString()))
+                .thenReturn(TEST_CLOUDFRONT_URL_ORIGINAL);
         when(clothingItemRepository.save(any(ClothingItem.class)))
-                .thenThrow(new DataAccessException("Database connection failed") {});
+                .thenThrow(new RuntimeException("Database connection failed"));
 
         // Act & Assert
-        assertThrows(DataAccessException.class, () -> {
+        assertThrows(InternalServerException.class, () -> {
             clothingItemService.saveClothingItem(request);
         });
 

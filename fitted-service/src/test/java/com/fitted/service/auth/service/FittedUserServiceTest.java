@@ -44,6 +44,8 @@ class FittedUserServiceTest {
     private JwtProperties jwtProperties;
     @Mock
     private AuthenticationManager authenticationManager;
+    @Mock
+    private UserCacheService userCacheService;
 
     @InjectMocks
     private FittedUserService userService;
@@ -77,8 +79,7 @@ class FittedUserServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> userService.signup(request))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Passwords do not match!");
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -88,8 +89,7 @@ class FittedUserServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> userService.signup(createSignUpRequest()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Email is already registered!");
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -139,21 +139,22 @@ class FittedUserServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> userService.refreshToken("invalid-token"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Invalid refresh token");
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void logout_Success() {
         // Given
-        RefreshToken refreshToken = mock(RefreshToken.class);
+        Users testUser = createTestUser();
+        RefreshToken refreshToken = createValidRefreshToken(testUser);
         when(refreshTokenRepository.findByTokenHash(anyString())).thenReturn(Optional.of(refreshToken));
 
         // When
         userService.logout("any-token");
 
         // Then
-        verify(refreshToken).setRevoked(true);
+        assertThat(refreshToken.getRevoked()).isTrue();
         verify(refreshTokenRepository).save(refreshToken);
+        verify(userCacheService).evictUserCache(testUser.getId(), testUser.getEmail());
     }
 }

@@ -40,6 +40,12 @@ public class ClothingItem {
     @Column(name="modified_image_url")
     private String modifiedImageUrl;
     private String color;
+    @Column(name = "ai_description", columnDefinition = "TEXT")
+    private String aiDescription;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "enrichment_status")
+    @Builder.Default
+    private EnrichmentStatus enrichmentStatus = EnrichmentStatus.NONE;
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
     @ManyToOne(fetch = FetchType.LAZY)

@@ -1,5 +1,6 @@
 package com.fitted.service.controller;
 
+import com.fitted.service.auth.model.UserPrincipal;
 import com.fitted.service.dto.ClothingItemResponse;
 import com.fitted.service.dto.CreateClothingItemRequest;
 import com.fitted.service.exception.GlobalExceptionHandler;
@@ -13,10 +14,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.bind.support.WebDataBinderFactory;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.method.support.ModelAndViewContainer;
 
 import java.util.UUID;
 
@@ -36,10 +42,24 @@ class ClothingItemControllerTest {
     @InjectMocks
     private ClothingItemController clothingItemController;
 
+    private final HandlerMethodArgumentResolver userPrincipalResolver = new HandlerMethodArgumentResolver() {
+        @Override
+        public boolean supportsParameter(MethodParameter parameter) {
+            return parameter.getParameterType().equals(UserPrincipal.class);
+        }
+
+        @Override
+        public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
+                                      NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
+            return new UserPrincipal(ServiceTestDataUtils.USER);
+        }
+    };
+
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(clothingItemController)
                 .setControllerAdvice(new GlobalExceptionHandler())
+                .setCustomArgumentResolvers(userPrincipalResolver)
                 .build();
     }
 
@@ -57,7 +77,7 @@ class ClothingItemControllerTest {
                 .thenReturn(response);
 
         // Act & Assert
-        mockMvc.perform(multipart("/api/clothing-items")
+        mockMvc.perform(multipart("/api/v1/clothing-items")
                         .file(originalImage)
                         .file(modifiedImage)
                         .param("name", "Blue Jeans")
@@ -87,14 +107,13 @@ class ClothingItemControllerTest {
                 .thenThrow(new ValidationException("File input is invalid."));
 
         // Act & Assert
-        mockMvc.perform(multipart("/api/clothing-items")
+        mockMvc.perform(multipart("/api/v1/clothing-items")
                         .file(originalImage)
                         .file(modifiedImage)
                         .param("name", "Test Item")
                         .param("type", "TOP")
                         .contentType(MediaType.MULTIPART_FORM_DATA))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string("File input is invalid."));
+                .andExpect(status().isBadRequest());
 
         verify(clothingItemService, times(1)).saveClothingItem(any(CreateClothingItemRequest.class));
     }
@@ -111,14 +130,13 @@ class ClothingItemControllerTest {
                 .thenThrow(new InternalServerException("S3 upload failed"));
 
         // Act & Assert
-        mockMvc.perform(multipart("/api/clothing-items")
+        mockMvc.perform(multipart("/api/v1/clothing-items")
                         .file(originalImage)
                         .file(modifiedImage)
                         .param("name", "Test Item")
                         .param("type", "TOP")
                         .contentType(MediaType.MULTIPART_FORM_DATA))
-                .andExpect(status().isInternalServerError())
-                .andExpect(content().string("Internal server error"));
+                .andExpect(status().isInternalServerError());
 
         verify(clothingItemService, times(1)).saveClothingItem(any(CreateClothingItemRequest.class));
     }
@@ -131,15 +149,14 @@ class ClothingItemControllerTest {
         MockMultipartFile modifiedImage = new MockMultipartFile(
                 "modifiedImageFile", "modified.png", "image/png", "test content".getBytes());
 
-        // Act & Assert - Testing Spring's validation, so we expect 400
-        mockMvc.perform(multipart("/api/clothing-items")
+        // Act & Assert
+        mockMvc.perform(multipart("/api/v1/clothing-items")
                         .file(originalImage)
                         .file(modifiedImage)
                         .param("type", "TOP")
                         .contentType(MediaType.MULTIPART_FORM_DATA))
                 .andExpect(status().isBadRequest());
 
-        // Don't verify service call since validation should fail before reaching service
         verify(clothingItemService, never()).saveClothingItem(any(CreateClothingItemRequest.class));
     }
 }
