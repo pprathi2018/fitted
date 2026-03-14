@@ -1,12 +1,15 @@
 package com.fitted.service.ai.enrichment;
 
+import com.fitted.service.ai.embedding.EmbeddingService;
 import com.fitted.service.ai.vision.VisionAIService;
 import com.fitted.service.model.ClothingItem;
+import com.fitted.service.model.ClothingItemEmbedding;
 import com.fitted.service.model.EnrichmentStatus;
+import com.fitted.service.repository.ClothingItemEmbeddingRepository;
 import com.fitted.service.repository.ClothingItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.context.event.EventListener;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,12 +27,14 @@ import java.net.http.HttpResponse;
 public class EnrichmentEventListener {
 
     private final VisionAIService visionAIService;
+    private final EmbeddingService embeddingService;
     private final ClothingItemRepository clothingItemRepository;
+    private final ClothingItemEmbeddingRepository clothingItemEmbeddingRepository;
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
     @Async("enrichment-executor")
-    @EventListener
-    @Transactional
+    @TransactionalEventListener
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void handleClothingItemCreated(ClothingItemCreatedEvent event) {
         UUID clothingItemId = event.getClothingItemId();
         log.info("Starting enrichment for clothing item: {}", clothingItemId);
@@ -45,16 +50,26 @@ public class EnrichmentEventListener {
 
         try {
             byte[] imageBytes = downloadImage(event.getModifiedImageUrl());
-            String description = visionAIService.generateDescription(imageBytes);
 
+            String description = visionAIService.generateDescription(imageBytes);
             if (description != null) {
                 clothingItem.setAiDescription(description);
-                clothingItem.setEnrichmentStatus(EnrichmentStatus.COMPLETED);
-                log.info("Enrichment completed for clothing item: {}", clothingItemId);
+                log.info("AI description generated for clothing item: {}", clothingItemId);
             } else {
-                clothingItem.setEnrichmentStatus(EnrichmentStatus.FAILED);
-                log.warn("Enrichment failed — image may not be recognized as clothing item: {}", clothingItemId);
+                log.warn("Image not recognized as clothing item: {}", clothingItemId);
             }
+
+            float[] embedding = embeddingService.generateEmbedding(imageBytes);
+            ClothingItemEmbedding clothingItemEmbedding = ClothingItemEmbedding.builder()
+                    .clothingItemId(clothingItemId)
+                    .userId(clothingItem.getUser().getId())
+                    .embedding(embedding)
+                    .build();
+            clothingItemEmbeddingRepository.save(clothingItemEmbedding);
+            log.info("Embedding saved for clothing item: {}", clothingItemId);
+
+            clothingItem.setEnrichmentStatus(EnrichmentStatus.COMPLETED);
+            log.info("Enrichment completed for clothing item: {}", clothingItemId);
         } catch (Exception e) {
             clothingItem.setEnrichmentStatus(EnrichmentStatus.FAILED);
             log.error("Enrichment failed for clothing item: {}", clothingItemId, e);

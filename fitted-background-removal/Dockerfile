@@ -25,5 +25,6 @@ COPY lambda_handler.py ${LAMBDA_TASK_ROOT}
 
 ENV PYTHONUNBUFFERED=1
 ENV U2NET_HOME=/tmp/.u2net
+ENV HF_HOME=/tmp/.hf_cache
 
 CMD ["lambda_handler.lambda_handler"]
