@@ -13,7 +13,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import static com.fitted.service.auth.utils.AuthTestDataUtils.*;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.TEST_ACCESS_TOKEN;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.TEST_REFRESH_TOKEN;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.createAuthResponse;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.createLoginRequest;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.createSignUpRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;

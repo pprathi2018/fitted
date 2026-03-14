@@ -14,7 +14,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import javax.crypto.SecretKey;
 import java.util.UUID;
 
-import static com.fitted.service.auth.utils.AuthTestDataUtils.*;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.ACCESS_TOKEN_EXPIRATION;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.TEST_EMAIL;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.TEST_JWT_SECRET;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.TEST_USER_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 

@@ -15,6 +15,8 @@ import java.util.UUID;
 public interface ClothingItemRepository extends JpaRepository<ClothingItem, UUID>, JpaSpecificationExecutor<ClothingItem> {
     Optional<ClothingItem> findByIdAndUserId(UUID id, UUID userId);
 
+    List<ClothingItem> findByUserId(UUID userId);
+
     List<ClothingItem> findByIdInAndUserId(List<UUID> ids, UUID userId);
 
     @Override

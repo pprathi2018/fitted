@@ -1,7 +1,13 @@
 package com.fitted.service.ai.vision;
 
 import com.anthropic.client.AnthropicClient;
-import com.anthropic.models.messages.*;
+import com.anthropic.models.messages.Base64ImageSource;
+import com.anthropic.models.messages.ContentBlockParam;
+import com.anthropic.models.messages.ImageBlockParam;
+import com.anthropic.models.messages.Message;
+import com.anthropic.models.messages.MessageCreateParams;
+import com.anthropic.models.messages.TextBlock;
+import com.anthropic.models.messages.TextBlockParam;
 import com.fitted.service.ai.config.AIProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;

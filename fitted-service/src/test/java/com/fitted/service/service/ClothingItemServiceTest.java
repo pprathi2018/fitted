@@ -20,11 +20,21 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
-import static com.fitted.service.utils.ServiceTestDataUtils.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static com.fitted.service.utils.ServiceTestDataUtils.TEST_CLOUDFRONT_URL_MODIFIED;
+import static com.fitted.service.utils.ServiceTestDataUtils.TEST_CLOUDFRONT_URL_ORIGINAL;
+import static com.fitted.service.utils.ServiceTestDataUtils.TEST_S3_URL_MODIFIED;
+import static com.fitted.service.utils.ServiceTestDataUtils.TEST_S3_URL_ORIGINAL;
+import static com.fitted.service.utils.ServiceTestDataUtils.USER;
+import static com.fitted.service.utils.ServiceTestDataUtils.USER_ID;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ClothingItemServiceTest {

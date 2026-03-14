@@ -20,12 +20,25 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.Optional;
 import java.util.UUID;
 
-import static com.fitted.service.auth.utils.AuthTestDataUtils.*;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.REFRESH_TOKEN_EXPIRATION;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.TEST_ACCESS_TOKEN;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.TEST_EMAIL;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.TEST_PASSWORD;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.TEST_PASSWORD_HASH;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.TEST_REFRESH_TOKEN;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.TEST_USER_ID;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.createAuthResponse;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.createLoginRequest;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.createSignUpRequest;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.createTestUser;
+import static com.fitted.service.auth.utils.AuthTestDataUtils.createValidRefreshToken;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class FittedUserServiceTest {
