@@ -20,6 +20,7 @@ RUN pip install -r requirements.txt
 
 COPY app.py ${LAMBDA_TASK_ROOT}
 COPY background_removal.py ${LAMBDA_TASK_ROOT}
+COPY image_embedding.py ${LAMBDA_TASK_ROOT}
 COPY lambda_handler.py ${LAMBDA_TASK_ROOT}
 
 ENV PYTHONUNBUFFERED=1

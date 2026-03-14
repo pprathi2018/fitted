@@ -2,6 +2,7 @@ package com.fitted.service.service;
 
 import com.fitted.service.dto.ClothingItemResponse;
 import com.fitted.service.dto.CreateClothingItemRequest;
+import com.fitted.service.ai.enrichment.EnrichmentPublisher;
 import com.fitted.service.exception.InternalServerException;
 import com.fitted.service.exception.s3.S3FileUploadServerException;
 import com.fitted.service.exception.s3.S3FileUploadValidationException;
@@ -36,6 +37,9 @@ class ClothingItemServiceTest {
 
     @Mock
     private CloudFrontUrlService cloudFrontUrlService;
+
+    @Mock
+    private EnrichmentPublisher enrichmentPublisher;
 
     @InjectMocks
     private ClothingItemService clothingItemService;

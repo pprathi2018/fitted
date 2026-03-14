@@ -6,11 +6,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 import io
 from background_removal import BackgroundRemover, BackgroundRemovalError
+from image_embedding import ImageEmbedder, ImageEmbeddingError
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 model_cache = {}
+embedder_cache = {}
 
 async def get_or_use_bg_remover_model(use_cloth_seg: bool) -> BackgroundRemover:
   cache_key = 'cloth_seg' if use_cloth_seg else 'general'
@@ -22,6 +24,16 @@ async def get_or_use_bg_remover_model(use_cloth_seg: bool) -> BackgroundRemover:
   else:
     logger.info("Using cached background remover")
     return model_cache[cache_key]
+
+async def get_or_create_embedder() -> ImageEmbedder:
+  if 'embedder' not in embedder_cache:
+    logger.info("Instantiating image embedder")
+    embedder = ImageEmbedder()
+    embedder_cache['embedder'] = embedder
+    return embedder
+  else:
+    logger.info("Using cached image embedder")
+    return embedder_cache['embedder']
 
 app = FastAPI(
     title="Fitted Background Removal API",
@@ -51,7 +63,8 @@ async def health():
 async def warmup():
     try:
         await get_or_use_bg_remover_model(False)
-        return {"status": "warm", "models_loaded": list(model_cache.keys())}
+        await get_or_create_embedder()
+        return {"status": "warm", "models_loaded": list(model_cache.keys()) + list(embedder_cache.keys())}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -127,6 +140,61 @@ async def remove_background(file: UploadFile = File(...), use_cloth_seg: bool = 
         logger.error(f"Unexpected error: {e}")
         raise HTTPException(
             status_code=500, 
+            detail="An unexpected error occurred. Please try again."
+        )
+
+@app.post("/api/embed")
+async def generate_embedding(file: UploadFile = File(...)):
+    try:
+        embedder = await get_or_create_embedder()
+        logger.info("Image embedder initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize image embedder: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Embedding service is not available. Please try again later."
+        )
+
+    allowed_types = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+    ]
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Allowed types: {', '.join(allowed_types)}"
+        )
+
+    try:
+        contents = await file.read()
+        file_size_mb = len(contents) / (1024 * 1024)
+
+        if file_size_mb > 10:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File too large ({file_size_mb:.1f}MB). Maximum size is 10MB."
+            )
+
+        logger.info(f"Generating embedding for: {file.filename}")
+        embedding = embedder.generate_embedding(contents)
+        logger.info(f"Successfully generated embedding for: {file.filename} ({len(embedding)} dimensions)")
+
+        return {
+            "embedding": embedding,
+            "model": "clip-vit-base-patch32",
+            "dimensions": len(embedding)
+        }
+    except ImageEmbeddingError as e:
+        logger.error(f"Embedding error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
             detail="An unexpected error occurred. Please try again."
         )
 

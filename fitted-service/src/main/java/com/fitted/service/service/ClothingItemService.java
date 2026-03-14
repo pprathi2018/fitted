@@ -5,6 +5,7 @@ import com.fitted.service.dto.CreateClothingItemRequest;
 import com.fitted.service.dto.SearchClothingItemRequest;
 import com.fitted.service.dto.SearchClothingItemResponse;
 import com.fitted.service.dto.search.SortOrder;
+import com.fitted.service.ai.enrichment.EnrichmentPublisher;
 import com.fitted.service.exception.InternalServerException;
 import com.fitted.service.exception.ResourceNotFoundException;
 import com.fitted.service.exception.ValidationException;
@@ -37,6 +38,7 @@ public class ClothingItemService {
     private final ClothingItemRepository clothingItemRepository;
     private final S3FileUploadService s3FileUploadService;
     private final CloudFrontUrlService cloudFrontUrlService;
+    private final EnrichmentPublisher enrichmentPublisher;
 
     private final static String ORIGINAL_IMAGE_TYPE = "original";
     private final static String MODIFIED_IMAGE_TYPE = "modified";
@@ -87,6 +89,8 @@ public class ClothingItemService {
                     .build();
             ClothingItem saved = clothingItemRepository.save(clothingItem);
             log.info("Save clothing item was successful");
+
+            enrichmentPublisher.publishClothingItemCreated(saved.getId(), saved.getModifiedImageUrl());
 
             return ClothingItemResponse.builder()
                     .id(saved.getId())
