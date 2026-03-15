@@ -1,24 +1,17 @@
 package com.fitted.service.ai.chat;
 
 import com.fitted.service.model.ClothingItem;
-import com.fitted.service.repository.ClothingItemRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 @Log4j2
 public class ClosetContextBuilder {
 
-    private final ClothingItemRepository clothingItemRepository;
-
-    public String buildContext(UUID userId) {
-        List<ClothingItem> items = clothingItemRepository.findByUserId(userId);
-        log.info("Building closet context for user {} with {} items", userId, items.size());
+    public String buildContext(List<ClothingItem> items) {
+        log.info("Building closet context with {} items", items.size());
 
         if (items.isEmpty()) {
             return "The user's closet is empty. They have no clothing items yet.";

@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.fitted.service.ai.chat.model.ChatMessage.USER_ROLE;
+
 @Service
 @RequiredArgsConstructor
 @Log4j2
@@ -31,7 +33,7 @@ public class ClaudeChatService implements ChatLLMService {
                 .system(systemPrompt);
 
         for (ChatMessage message : conversationHistory) {
-            if ("user".equals(message.getRole())) {
+            if (USER_ROLE.equals(message.getRole())) {
                 paramsBuilder.addUserMessage(message.getContent());
             } else {
                 paramsBuilder.addAssistantMessage(message.getContent());
