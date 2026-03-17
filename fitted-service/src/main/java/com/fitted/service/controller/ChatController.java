@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -42,5 +44,14 @@ public class ChatController {
                 userPrincipal.user().getId()
         );
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/session/{sessionId}")
+    public ResponseEntity<Void> endSession(
+            @PathVariable String sessionId,
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        log.info("Ending chat session: {}", sessionId);
+        chatService.endSession(sessionId, userPrincipal.user().getId());
+        return ResponseEntity.noContent().build();
     }
 }

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Upload, Shirt, Palette, User } from 'lucide-react';
+import { Home, Upload, Shirt, Palette, Sparkles, User } from 'lucide-react';
 import { cva } from 'class-variance-authority';
 
 const navLinkVariants = cva(
@@ -37,6 +37,7 @@ export default function Navigation() {
     { href: '/upload', icon: Upload, label: 'Upload' },
     { href: '/closet', icon: Shirt, label: 'Closet' },
     { href: '/outfit', icon: Palette, label: 'Outfit' },
+    { href: '/chat', icon: Sparkles, label: 'Stylist' },
   ];
 
   return (

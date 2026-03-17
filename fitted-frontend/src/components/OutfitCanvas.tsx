@@ -49,6 +49,7 @@ const OutfitCanvas = () => {
   const observerRefs = useRef<Map<string, IntersectionObserver>>(new Map());
   const hasLoadedOutfit = useRef(false);
   const canvasReadyRef = useRef(false);
+  const hasLoadedFromStorage = useRef(false);
 
   const categoryLabels: Record<string, string> = {
     top: 'Tops',
@@ -72,6 +73,75 @@ const OutfitCanvas = () => {
 
     return () => clearTimeout(timer);
   }, []);
+
+  // Save canvas state to sessionStorage whenever items change
+  useEffect(() => {
+    if (!hasLoadedFromStorage.current) return;
+    if (outfitItems.length === 0) {
+      sessionStorage.removeItem('outfitCanvasState');
+      return;
+    }
+    const canvasElement = document.getElementById('canvas');
+    if (!canvasElement || canvasElement.clientWidth === 0) return;
+
+    const canvasWidth = canvasElement.clientWidth;
+    const canvasHeight = canvasElement.clientHeight;
+
+    const state = outfitItems.map(item => ({
+      clothingId: item.clothingId,
+      clothingItem: item.clothingItem,
+      xPercent: (item.x / canvasWidth) * 100,
+      yPercent: (item.y / canvasHeight) * 100,
+      widthPercent: ((item.width || 128) / canvasWidth) * 100,
+      heightPercent: ((item.height || 160) / canvasHeight) * 100,
+      zIndex: item.zIndex,
+    }));
+    sessionStorage.setItem('outfitCanvasState', JSON.stringify(state));
+  }, [outfitItems]);
+
+  // Load canvas state from sessionStorage on mount
+  useEffect(() => {
+    if (outfitId || hasLoadedFromStorage.current) return;
+
+    const stored = sessionStorage.getItem('outfitCanvasState');
+    if (stored) {
+      const checkAndLoad = () => {
+        const canvasElement = document.getElementById('canvas');
+        if (!canvasElement || canvasElement.clientWidth === 0) return false;
+
+        const canvasWidth = canvasElement.clientWidth;
+        const canvasHeight = canvasElement.clientHeight;
+        const parsed = JSON.parse(stored);
+
+        let maxZ = 0;
+        const loadedItems: OutfitItem[] = parsed.map((item: any) => {
+          maxZ = Math.max(maxZ, item.zIndex);
+          return {
+            id: `outfit-${item.clothingId}-${Date.now()}-${Math.random()}`,
+            clothingId: item.clothingId,
+            clothingItem: item.clothingItem,
+            x: (item.xPercent / 100) * canvasWidth,
+            y: (item.yPercent / 100) * canvasHeight,
+            width: (item.widthPercent / 100) * canvasWidth,
+            height: (item.heightPercent / 100) * canvasHeight,
+            zIndex: item.zIndex,
+          };
+        });
+
+        setOutfitItems(loadedItems);
+        setNextZIndex(maxZ + 1);
+        hasLoadedFromStorage.current = true;
+        return true;
+      };
+
+      if (!checkAndLoad()) {
+        const timer = setTimeout(checkAndLoad, 200);
+        return () => clearTimeout(timer);
+      }
+    } else {
+      hasLoadedFromStorage.current = true;
+    }
+  }, [outfitId]);
 
   useEffect(() => {
     if (outfitId && !hasLoadedOutfit.current && !isInitialLoading && canvasReadyRef.current) {
@@ -302,7 +372,8 @@ const OutfitCanvas = () => {
     setSelectedItemId(null);
     setEditingOutfit(null);
     setTags([]);
-    
+    sessionStorage.removeItem('outfitCanvasState');
+
     router.push('/outfit');
   }, [router]);
 

@@ -67,6 +67,11 @@ public class ChatService {
         return chatSessionManager.createSession(userId);
     }
 
+    public void endSession(String sessionId, UUID userId) {
+        chatSessionManager.getSession(sessionId, userId)
+                .ifPresent(session -> chatSessionManager.removeSession(sessionId));
+    }
+
     public ChatResponse sendMessage(String sessionId, String message, UUID userId) {
         ChatSession session = chatSessionManager.getSession(sessionId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Chat session not found or expired"));
